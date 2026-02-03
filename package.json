@@ -2,14 +2,14 @@
   "name": "cockpit",
   "version": "1.0.0",
   "description": "Claude Code project manager for macOS",
-  "main": "dist/main/index.js",
+  "main": "dist/main/main/index.js",
   "scripts": {
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
     "build": "npm run build:main && npm run build:renderer",
     "dev:main": "tsc -p tsconfig.main.json --watch",
     "dev:renderer": "vite",
-    "dev": "concurrently \"npm run dev:main\" \"wait-on dist/main/index.js && NODE_ENV=development electron .\"",
+    "dev": "concurrently \"npm run dev:main\" \"wait-on dist/main/main/index.js && NODE_ENV=development electron .\"",
     "start": "electron .",
     "package": "npm run build && electron-builder"
   },
