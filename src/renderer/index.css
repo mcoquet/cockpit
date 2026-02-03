@@ -96,3 +96,93 @@ body {
 .footer button:hover {
   background: #444;
 }
+
+.editor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-panel {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 16px;
+  width: 280px;
+}
+
+.editor-header {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.editor-field {
+  margin-bottom: 12px;
+}
+
+.editor-field label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.editor-field input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #1e1e1e;
+  color: #e0e0e0;
+  font-size: 13px;
+  outline: none;
+}
+
+.editor-field input:focus {
+  border-color: #0a84ff;
+}
+
+.editor-path {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-actions button {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.save-btn {
+  background: #0a84ff;
+  color: white;
+}
+
+.save-btn:hover {
+  background: #0077ed;
+}
+
+.remove-btn {
+  background: #444;
+  color: #e0e0e0;
+}
+
+.remove-btn:hover {
+  background: #ff453a;
+  color: white;
+}
