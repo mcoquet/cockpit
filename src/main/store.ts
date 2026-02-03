@@ -4,7 +4,8 @@ import type { Project } from '../shared/types';
 
 // Use require for electron-store due to ESM/CJS compatibility
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const Store = require('electron-store');
+const ElectronStore = require('electron-store');
+const Store = ElectronStore.default || ElectronStore;
 
 interface StoreSchema {
   projects: Project[];
