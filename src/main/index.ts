@@ -49,17 +49,21 @@ function createTray(): void {
   tray.setToolTip('Cockpit');
 
   tray.on('click', (_event, bounds) => {
+    console.log('[tray] clicked, window exists:', !!window, 'isVisible:', window?.isVisible());
     if (!window) {
       window = createWindow();
     }
 
     if (window.isVisible()) {
+      console.log('[tray] hiding window');
       window.hide();
     } else {
+      console.log('[tray] showing window');
       const { x, y } = bounds;
       const { width } = window.getBounds();
       window.setPosition(Math.round(x - width / 2), y);
       window.show();
+      window.focus();
     }
   });
 }
@@ -96,20 +100,31 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean) => {
     const existing = activeSessions[projectPath];
+    console.log('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
+
+    // Hide window immediately when opening a session
+    if (window) {
+      window.hide();
+    }
 
     if (existing && !forceNew) {
       // Check if session still exists
       const exists = await iterm.sessionExists(existing.sessionId);
+      console.log('[open-session] sessionExists:', exists);
       if (exists) {
-        await iterm.focusSession(existing.sessionId);
+        const focused = await iterm.focusSession(existing.sessionId);
+        console.log('[open-session] focusSession result:', focused);
         return;
       }
       // Session is gone, remove it
+      console.log('[open-session] session gone, removing');
       delete activeSessions[projectPath];
     }
 
     // Open new session
+    console.log('[open-session] creating new session');
     const { sessionId } = await iterm.openSession(projectPath);
+    console.log('[open-session] new sessionId:', sessionId);
     activeSessions[projectPath] = { sessionId };
     notifySessionsChanged();
   });

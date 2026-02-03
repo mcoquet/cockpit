@@ -18,9 +18,12 @@ export async function openSession(relativePath: string): Promise<SessionInfo> {
   const script = `
     tell application "iTerm2"
       activate
-      set newWindow to (create window with default profile command "cd \\"${fullPath}\\" && claude")
-      tell current session of newWindow
-        set sessionId to id
+      create window with default profile
+      tell current window
+        tell current session
+          write text "cd \\"${fullPath}\\" && claude"
+          set sessionId to id
+        end tell
       end tell
       return sessionId
     end tell
@@ -39,8 +42,9 @@ export async function focusSession(sessionId: string): Promise<boolean> {
         repeat with t in tabs of w
           repeat with s in sessions of t
             if id of s is "${escapedId}" then
+              select t
               select s
-              tell w to select t
+              set index of w to 1
               activate
               return true
             end if
