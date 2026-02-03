@@ -1,0 +1,15 @@
+{
+  "appId": "com.cockpit.app",
+  "productName": "Cockpit",
+  "directories": {
+    "output": "out"
+  },
+  "files": [
+    "dist/**/*",
+    "assets/**/*"
+  ],
+  "mac": {
+    "category": "public.app-category.developer-tools",
+    "target": "dir"
+  }
+}
