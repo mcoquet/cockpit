@@ -1,0 +1,37 @@
+{
+  "name": "cockpit",
+  "version": "1.0.0",
+  "description": "Claude Code project manager for macOS",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "build": "npm run build:main && npm run build:renderer",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev:renderer": "vite",
+    "dev": "concurrently \"npm run dev:main\" \"wait-on dist/main/index.js && NODE_ENV=development electron .\"",
+    "start": "electron .",
+    "package": "npm run build && electron-builder"
+  },
+  "keywords": ["electron", "claude", "menubar"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "electron": "^40.1.0",
+    "electron-store": "^11.0.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.0",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.3",
+    "concurrently": "^9.2.1",
+    "electron-builder": "^26.7.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "wait-on": "^9.0.3"
+  }
+}
