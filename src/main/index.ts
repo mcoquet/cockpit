@@ -1,10 +1,14 @@
 import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog } from 'electron';
 import path from 'path';
 import * as store from './store';
-import type { Project } from '../shared/types';
+import * as iterm from './iterm';
+import type { Project, ActiveSession } from '../shared/types';
 
 let tray: Tray | null = null;
 let window: BrowserWindow | null = null;
+
+// Track active sessions in memory
+const activeSessions: Record<string, ActiveSession> = {};
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -55,6 +59,12 @@ function createTray(): void {
   });
 }
 
+function notifySessionsChanged(): void {
+  if (window) {
+    window.webContents.send('sessions-changed', activeSessions);
+  }
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('get-projects', () => store.getProjects());
 
@@ -77,9 +87,27 @@ function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0];
   });
 
-  // Placeholder handlers for session management (Task 5)
-  ipcMain.handle('get-active-sessions', () => ({}));
-  ipcMain.handle('open-session', async () => {});
+  ipcMain.handle('get-active-sessions', () => activeSessions);
+
+  ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean) => {
+    const existing = activeSessions[projectPath];
+
+    if (existing && !forceNew) {
+      // Check if session still exists
+      const exists = await iterm.sessionExists(existing.sessionId);
+      if (exists) {
+        await iterm.focusSession(existing.sessionId);
+        return;
+      }
+      // Session is gone, remove it
+      delete activeSessions[projectPath];
+    }
+
+    // Open new session
+    const { sessionId } = await iterm.openSession(projectPath);
+    activeSessions[projectPath] = { sessionId };
+    notifySessionsChanged();
+  });
 }
 
 app.dock?.hide();
