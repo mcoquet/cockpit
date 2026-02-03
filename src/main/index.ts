@@ -20,11 +20,16 @@ function createWindow(): BrowserWindow {
     movable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
+    transparent: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  win.on('blur', () => {
+    win.hide();
   });
 
   if (process.env.NODE_ENV === 'development') {
