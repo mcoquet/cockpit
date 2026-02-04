@@ -43,11 +43,22 @@ function createPopupWindow(): BrowserWindow {
   return win;
 }
 
+function updateTrayTitle(): void {
+  if (!tray) return;
+  const hasActive = Object.keys(activeSessions).length > 0;
+  // Show bullet indicator when sessions are active
+  tray.setTitle(hasActive ? '● λ' : 'λ');
+}
+
+function updateTrayIcon(): void {
+  updateTrayTitle();
+}
+
 function createTray(): void {
-  const iconPath = path.join(__dirname, '../../assets/iconTemplate.png');
-  const icon = nativeImage.createFromPath(iconPath);
-  icon.setTemplateImage(true);
-  tray = new Tray(icon);
+  // Use empty icon - macOS will show just the title text
+  const emptyIcon = nativeImage.createEmpty();
+  tray = new Tray(emptyIcon);
+  tray.setTitle('λ');
   tray.setToolTip('Cockpit');
 
   tray.on('click', (_event, bounds) => {
@@ -74,6 +85,7 @@ function notifySessionsChanged(): void {
   if (popupWindow) {
     popupWindow.webContents.send('sessions-changed', activeSessions);
   }
+  updateTrayIcon();
 }
 
 function registerIpcHandlers(): void {
