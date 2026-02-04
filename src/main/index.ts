@@ -175,6 +175,8 @@ function registerIpcHandlers(): void {
     const win = terminalWindow.createTerminalWindow({
       sessionId,
       projectName,
+      hasBeads: project?.hasBeads,
+      hasGit: project?.hasGit,
       onClose: () => {
         console.log('[terminal-window] closed, cleaning up session:', sessionId);
         pty.killSession(sessionId);

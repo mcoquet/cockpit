@@ -3,6 +3,7 @@ export interface Project {
   name?: string;
   description?: string;
   hasBeads?: boolean;
+  hasGit?: boolean;
 }
 
 export interface ActiveSession {

@@ -125,7 +125,12 @@ export default function App() {
               <div className="project-header">
                 {isActive && <span className="active-indicator">●</span>}
                 <span className="project-name">{name}</span>
-                {project.hasBeads && <span className="beads-indicator" title="Has beads">◆</span>}
+                {(project.hasGit || project.hasBeads) && (
+                  <span className="project-indicators">
+                    {project.hasGit && <span className="git-indicator" title="Git repository">⎇</span>}
+                    {project.hasBeads && <span className="beads-indicator" title="Has beads">◆</span>}
+                  </span>
+                )}
               </div>
               {project.description && (
                 <div className="project-description">{project.description}</div>

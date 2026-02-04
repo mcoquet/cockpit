@@ -77,10 +77,17 @@ body {
   font-size: 10px;
 }
 
+.project-indicators {
+  margin-left: auto;
+  font-size: 10px;
+}
+
+.git-indicator {
+  color: #ff9500;
+}
+
 .beads-indicator {
   color: #af52de;
-  font-size: 10px;
-  margin-left: auto;
 }
 
 .project-name {

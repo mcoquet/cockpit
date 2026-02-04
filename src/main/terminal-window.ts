@@ -6,18 +6,22 @@ const terminalWindows = new Map<string, BrowserWindow>();
 export interface TerminalWindowOptions {
   sessionId: string;
   projectName: string;
+  hasBeads?: boolean;
+  hasGit?: boolean;
   onClose?: () => void;
 }
 
 export function createTerminalWindow(options: TerminalWindowOptions): BrowserWindow {
-  const { sessionId, projectName, onClose } = options;
+  const { sessionId, projectName, hasBeads, hasGit, onClose } = options;
+  const indicators = [hasGit ? '⎇' : '', hasBeads ? '◆' : ''].filter(Boolean).join('');
+  const title = indicators ? `${indicators} ${projectName}` : projectName;
 
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     minWidth: 400,
     minHeight: 300,
-    title: projectName,
+    title,
     webPreferences: {
       preload: path.join(__dirname, '../preload.js'),
       contextIsolation: true,
@@ -36,7 +40,7 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
 
   // Set title after page loads (HTML title would otherwise override)
   win.webContents.on('did-finish-load', () => {
-    win.setTitle(projectName);
+    win.setTitle(title);
   });
 
   win.on('closed', () => {
