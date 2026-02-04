@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { Project, ActiveSession } from '../shared/types';
 import ProjectEditor from './ProjectEditor';
 
@@ -7,10 +7,17 @@ export default function App() {
   const [sessions, setSessions] = useState<Record<string, ActiveSession>>({});
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Project | null>(null);
+  const searchRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     loadData();
     window.cockpit.onSessionsChanged(setSessions);
+
+    // Auto-focus search input on mount and when window gains focus
+    searchRef.current?.focus();
+    const handleFocus = () => searchRef.current?.focus();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   async function loadData() {
@@ -76,6 +83,7 @@ export default function App() {
     <div className="app">
       <div className="search-container">
         <textarea
+          ref={searchRef}
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
