@@ -54,6 +54,15 @@ The packaged app will be in `out/mac-arm64/Cockpit.app`.
 | Enter | Open selected project |
 | Type | Filter projects by name/description |
 
+### Terminal Input
+
+| Shortcut | Action |
+|----------|--------|
+| Enter | Submit prompt to Claude |
+| Alt+Enter | Insert newline (multiline input) |
+
+> **Note:** Shift+Enter does not work for newlines due to [xterm.js lacking kitty keyboard protocol support](https://github.com/xtermjs/xterm.js/issues/4198). Use Alt+Enter instead.
+
 ## Project Structure
 
 ```

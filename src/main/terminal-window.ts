@@ -44,6 +44,10 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
   // Set title after page loads (HTML title would otherwise override)
   win.webContents.on('did-finish-load', () => {
     win.setTitle(title);
+    // Open DevTools in dev mode for debugging
+    if (process.env.NODE_ENV === 'development') {
+      win.webContents.openDevTools({ mode: 'detach' });
+    }
   });
 
   win.on('closed', () => {
