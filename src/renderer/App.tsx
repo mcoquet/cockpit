@@ -32,9 +32,10 @@ export default function App() {
   }
 
   async function handleAddProject() {
-    const path = await window.cockpit.selectFolder();
-    if (path) {
-      await window.cockpit.addProject(path);
+    const folderPath = await window.cockpit.selectFolder();
+    if (folderPath) {
+      const project = await window.cockpit.addProject(folderPath);
+      await window.cockpit.openSession(project.path);
       loadData();
     }
   }
