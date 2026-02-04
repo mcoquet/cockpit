@@ -74,13 +74,19 @@ export default function Terminal() {
 
     window.addEventListener('resize', handleResize);
 
-    // Initial resize notification
+    // Initial resize notification and focus
     setTimeout(() => {
       handleResize();
+      terminal.focus();
     }, 100);
+
+    // Focus terminal when window gains focus
+    const handleFocus = () => terminalRef.current?.focus();
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('focus', handleFocus);
       terminal.dispose();
     };
   }, []);
