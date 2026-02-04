@@ -4,6 +4,8 @@
   "description": "Claude Code project manager for macOS",
   "main": "dist/main/main/index.js",
   "scripts": {
+    "rebuild": "electron-rebuild -f -w node-pty",
+    "postinstall": "electron-rebuild -f -w node-pty",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
     "build": "npm run build:main && npm run build:renderer",
@@ -19,10 +21,15 @@
   "type": "commonjs",
   "dependencies": {
     "electron-store": "^11.0.2",
+    "node-pty": "^1.0.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.0",
     "@types/node": "^25.2.0",
     "electron": "^40.1.0",
     "@types/react": "^19.2.10",

@@ -1,16 +1,18 @@
 import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog } from 'electron';
 import path from 'path';
 import * as store from './store';
-import * as iterm from './iterm';
+import { findClaudeBinary } from './claude';
+import * as pty from './pty';
+import * as terminalWindow from './terminal-window';
 import type { Project, ActiveSession } from '../shared/types';
 
 let tray: Tray | null = null;
-let window: BrowserWindow | null = null;
+let popupWindow: BrowserWindow | null = null;
 
 // Track active sessions in memory
 const activeSessions: Record<string, ActiveSession> = {};
 
-function createWindow(): BrowserWindow {
+function createPopupWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 320,
     height: 400,
@@ -49,28 +51,28 @@ function createTray(): void {
   tray.setToolTip('Cockpit');
 
   tray.on('click', (_event, bounds) => {
-    console.log('[tray] clicked, window exists:', !!window, 'isVisible:', window?.isVisible());
-    if (!window) {
-      window = createWindow();
+    console.log('[tray] clicked, popupWindow exists:', !!popupWindow, 'isVisible:', popupWindow?.isVisible());
+    if (!popupWindow) {
+      popupWindow = createPopupWindow();
     }
 
-    if (window.isVisible()) {
-      console.log('[tray] hiding window');
-      window.hide();
+    if (popupWindow.isVisible()) {
+      console.log('[tray] hiding popupWindow');
+      popupWindow.hide();
     } else {
-      console.log('[tray] showing window');
+      console.log('[tray] showing popupWindow');
       const { x, y } = bounds;
-      const { width } = window.getBounds();
-      window.setPosition(Math.round(x - width / 2), y);
-      window.show();
-      window.focus();
+      const { width } = popupWindow.getBounds();
+      popupWindow.setPosition(Math.round(x - width / 2), y);
+      popupWindow.show();
+      popupWindow.focus();
     }
   });
 }
 
 function notifySessionsChanged(): void {
-  if (window) {
-    window.webContents.send('sessions-changed', activeSessions);
+  if (popupWindow) {
+    popupWindow.webContents.send('sessions-changed', activeSessions);
   }
 }
 
@@ -102,18 +104,18 @@ function registerIpcHandlers(): void {
     const existing = activeSessions[projectPath];
     console.log('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
 
-    // Hide window immediately when opening a session
-    if (window) {
-      window.hide();
+    // Hide popup window immediately when opening a session
+    if (popupWindow) {
+      popupWindow.hide();
     }
 
     if (existing && !forceNew) {
       // Check if session still exists
-      const exists = await iterm.sessionExists(existing.sessionId);
+      const exists = pty.sessionExists(existing.sessionId);
       console.log('[open-session] sessionExists:', exists);
       if (exists) {
-        const focused = await iterm.focusSession(existing.sessionId);
-        console.log('[open-session] focusSession result:', focused);
+        const focused = terminalWindow.focusTerminalWindow(existing.sessionId);
+        console.log('[open-session] focusTerminalWindow result:', focused);
         return;
       }
       // Session is gone, remove it
@@ -121,12 +123,81 @@ function registerIpcHandlers(): void {
       delete activeSessions[projectPath];
     }
 
-    // Open new session
-    console.log('[open-session] creating new session');
-    const { sessionId } = await iterm.openSession(projectPath);
+    // Check for claude binary
+    const claudePath = findClaudeBinary();
+    if (!claudePath) {
+      dialog.showErrorBox(
+        'Claude not found',
+        'Could not find the claude CLI. Please ensure claude is installed and accessible.'
+      );
+      return;
+    }
+
+    // Get project name for window title
+    const projects = store.getProjects();
+    const project = projects.find((p) => p.path === projectPath);
+    const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
+
+    // Spawn PTY with claude
+    console.log('[open-session] creating new session with claude at:', claudePath);
+    const { id: sessionId } = pty.spawnClaude(projectPath, claudePath);
     console.log('[open-session] new sessionId:', sessionId);
-    activeSessions[projectPath] = { sessionId };
+
+    // Create terminal window
+    const win = terminalWindow.createTerminalWindow({
+      sessionId,
+      projectName,
+      onClose: () => {
+        console.log('[terminal-window] closed, cleaning up session:', sessionId);
+        pty.killSession(sessionId);
+        delete activeSessions[projectPath];
+        notifySessionsChanged();
+      },
+    });
+
+    activeSessions[projectPath] = { sessionId, windowId: win.id };
     notifySessionsChanged();
+
+    // Relay PTY output to terminal window
+    pty.onSessionOutput(sessionId, (data) => {
+      const termWin = terminalWindow.getTerminalWindow(sessionId);
+      if (termWin && !termWin.isDestroyed()) {
+        termWin.webContents.send('pty-output', data);
+      }
+    });
+
+    // Close terminal window when PTY exits
+    pty.onSessionExit(sessionId, () => {
+      console.log('[pty-exit] session exited:', sessionId);
+      terminalWindow.closeTerminalWindow(sessionId);
+    });
+  });
+
+  // Terminal IPC handlers
+  ipcMain.on('pty-input', (event, data: string) => {
+    // Get sessionId from the sender window
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWindow) return;
+
+    // Find the session for this window
+    for (const session of Object.values(activeSessions)) {
+      if (session.windowId === senderWindow.id) {
+        pty.writeToSession(session.sessionId, data);
+        break;
+      }
+    }
+  });
+
+  ipcMain.on('pty-resize', (event, cols: number, rows: number) => {
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWindow) return;
+
+    for (const session of Object.values(activeSessions)) {
+      if (session.windowId === senderWindow.id) {
+        pty.resizeSession(session.sessionId, cols, rows);
+        break;
+      }
+    }
   });
 }
 

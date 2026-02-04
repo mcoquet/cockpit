@@ -69,6 +69,12 @@ body {
   font-size: 10px;
 }
 
+.beads-indicator {
+  color: #af52de;
+  font-size: 10px;
+  margin-left: auto;
+}
+
 .project-name {
   font-weight: 500;
 }

@@ -1,5 +1,6 @@
 import path from 'path';
 import os from 'os';
+import fs from 'fs';
 import type { Project } from '../shared/types';
 
 // Use require for electron-store due to ESM/CJS compatibility
@@ -21,8 +22,17 @@ const store = new Store({
   set: <K extends keyof StoreSchema>(key: K, value: StoreSchema[K]) => void;
 };
 
+function checkHasBeads(projectPath: string): boolean {
+  const fullPath = path.join(os.homedir(), projectPath, '.beads');
+  return fs.existsSync(fullPath);
+}
+
 export function getProjects(): Project[] {
-  return store.get('projects');
+  const projects = store.get('projects');
+  return projects.map((p) => ({
+    ...p,
+    hasBeads: checkHasBeads(p.path),
+  }));
 }
 
 export function addProject(projectPath: string): Project {

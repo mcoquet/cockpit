@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, ActiveSession, CockpitAPI } from './shared/types';
+import type { Project, ActiveSession, CockpitAPI, TerminalAPI } from './shared/types';
 
-const api: CockpitAPI = {
+const cockpitApi: CockpitAPI = {
   getProjects: () => ipcRenderer.invoke('get-projects'),
   addProject: (path: string) => ipcRenderer.invoke('add-project', path),
   updateProject: (path: string, updates: Partial<Project>) =>
@@ -18,4 +18,23 @@ const api: CockpitAPI = {
   },
 };
 
-contextBridge.exposeInMainWorld('cockpit', api);
+const terminalApi: TerminalAPI = {
+  getSessionId: () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('sessionId');
+  },
+  sendInput: (data: string) => {
+    ipcRenderer.send('pty-input', data);
+  },
+  onOutput: (callback: (data: string) => void) => {
+    ipcRenderer.on('pty-output', (_event, data: string) => {
+      callback(data);
+    });
+  },
+  resize: (cols: number, rows: number) => {
+    ipcRenderer.send('pty-resize', cols, rows);
+  },
+};
+
+contextBridge.exposeInMainWorld('cockpit', cockpitApi);
+contextBridge.exposeInMainWorld('terminal', terminalApi);

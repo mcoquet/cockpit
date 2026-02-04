@@ -2,10 +2,12 @@ export interface Project {
   path: string;
   name?: string;
   description?: string;
+  hasBeads?: boolean;
 }
 
 export interface ActiveSession {
   sessionId: string;
+  windowId: number;
 }
 
 export interface CockpitAPI {
@@ -19,8 +21,16 @@ export interface CockpitAPI {
   onSessionsChanged: (callback: (sessions: Record<string, ActiveSession>) => void) => void;
 }
 
+export interface TerminalAPI {
+  getSessionId: () => string | null;
+  sendInput: (data: string) => void;
+  onOutput: (callback: (data: string) => void) => void;
+  resize: (cols: number, rows: number) => void;
+}
+
 declare global {
   interface Window {
     cockpit: CockpitAPI;
+    terminal: TerminalAPI;
   }
 }
