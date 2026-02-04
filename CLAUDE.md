@@ -63,3 +63,19 @@ This is an Electron app with the standard three-process architecture:
 - Project paths stored relative to home directory
 - Uses `require()` for electron-store due to ESM/CJS compatibility
 - Cmd+click on project forces new session even if one exists
+
+## Workflow Rules
+
+1. **Ticket first** - Never start work without an existing issue in beads (`bd show <id>`)
+2. **No premature commits** - Make changes, then wait for user to validate
+3. **User confirms before done** - Always ask user to test before committing/pushing
+
+### Correct Flow
+```
+bd show <id>                    # Review the issue
+bd update <id> --status=in_progress  # Claim it
+# Make code changes
+# Ask user to test (npm run dev)
+# Wait for user confirmation
+# Only then: commit, push, close issue
+```
