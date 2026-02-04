@@ -7,10 +7,15 @@ A macOS menubar app for managing Claude Code projects with embedded terminal win
 
 ## Features
 
-- **Menubar Quick Access** - Click the tray icon to see all your projects
+- **Menubar Quick Access** - Click the tray icon (λ) or press **Cmd+N** to see all your projects
 - **Embedded Terminals** - Each project opens in its own terminal window with xterm.js
 - **Session Management** - Track active sessions, focus existing windows, or force new sessions (Cmd+click)
-- **Beads Integration** - Projects with `.beads/` directories show a purple indicator
+- **Project Indicators** - Visual indicators in project list and terminal titles:
+  - `⊛` GitHub repository (purple)
+  - `⎇` Git repository without GitHub (orange)
+  - `◆` Has beads issue tracker (purple)
+- **Keyboard-First Workflow** - Arrow keys to navigate, Enter to open, search to filter
+- **Safe Quit** - Confirmation dialog when quitting with active sessions
 - **Auto-detect Claude** - Finds claude CLI at common paths (`~/.claude/bin/claude`, `/usr/local/bin/claude`, `/opt/homebrew/bin/claude`)
 
 ## Installation
@@ -34,11 +39,20 @@ The packaged app will be in `out/mac-arm64/Cockpit.app`.
 
 ## Usage
 
-1. Click the menubar icon to open the project list
-2. Click **+ Add Project** to add a project folder
-3. Click a project to open a Claude Code session
+1. Click the menubar icon (λ) or press **Cmd+N** to open the project list
+2. Use **arrow keys** to navigate, **Enter** to open, or type to search/filter
+3. Click **+ Add Project** to add a project folder (auto-opens a session)
 4. **Cmd+click** to force a new session even if one exists
 5. **Right-click** a project to edit its name/description or remove it
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Cmd+N | Open/toggle project list |
+| ↑/↓ | Navigate projects |
+| Enter | Open selected project |
+| Type | Filter projects by name/description |
 
 ## Project Structure
 
