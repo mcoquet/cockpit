@@ -1,4 +1,4 @@
-import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen } from 'electron';
+import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification } from 'electron';
 import path from 'path';
 import * as store from './store';
 import { findClaudeBinary } from './claude';
@@ -11,6 +11,10 @@ let popupWindow: BrowserWindow | null = null;
 
 // Track active sessions in memory
 const activeSessions: Record<string, ActiveSession> = {};
+
+// Debounce bell notifications per session (prevent spam)
+const lastBellTime: Record<string, number> = {};
+const BELL_DEBOUNCE_MS = 10000; // 10 seconds between notifications
 
 function createPopupWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -182,6 +186,7 @@ function registerIpcHandlers(): void {
         console.log('[terminal-window] closed, cleaning up session:', sessionId);
         pty.killSession(sessionId);
         delete activeSessions[projectPath];
+        delete lastBellTime[sessionId];
         notifySessionsChanged();
       },
     });
@@ -194,6 +199,21 @@ function registerIpcHandlers(): void {
       const termWin = terminalWindow.getTerminalWindow(sessionId);
       if (termWin && !termWin.isDestroyed()) {
         termWin.webContents.send('pty-output', data);
+
+        // Detect bell character and show notification if window not focused
+        if (data.includes('\x07') && !termWin.isFocused()) {
+          const now = Date.now();
+          const lastTime = lastBellTime[sessionId] || 0;
+          if (now - lastTime > BELL_DEBOUNCE_MS) {
+            lastBellTime[sessionId] = now;
+            const iconPath = path.join(app.getAppPath(), 'assets/icon.png');
+            new Notification({
+              title: 'Cockpit',
+              body: `${projectName} needs attention`,
+              icon: iconPath,
+            }).show();
+          }
+        }
       }
     });
 
