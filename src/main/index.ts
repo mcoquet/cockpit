@@ -253,3 +253,29 @@ app.on('will-quit', () => {
 app.on('window-all-closed', () => {
   // Keep app running in tray
 });
+
+// Confirm quit if active sessions exist
+let isQuitting = false;
+app.on('before-quit', async (event) => {
+  if (isQuitting) return;
+
+  const sessionCount = Object.keys(activeSessions).length;
+  if (sessionCount === 0) return;
+
+  event.preventDefault();
+
+  const { response } = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['Cancel', 'Quit'],
+    defaultId: 0,
+    cancelId: 0,
+    title: 'Quit Cockpit?',
+    message: `You have ${sessionCount} active session${sessionCount > 1 ? 's' : ''}.`,
+    detail: 'Quitting will terminate all running Claude sessions.',
+  });
+
+  if (response === 1) {
+    isQuitting = true;
+    app.quit();
+  }
+});
