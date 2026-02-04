@@ -8,12 +8,15 @@ export interface TerminalWindowOptions {
   projectName: string;
   hasBeads?: boolean;
   hasGit?: boolean;
+  hasGithub?: boolean;
   onClose?: () => void;
 }
 
 export function createTerminalWindow(options: TerminalWindowOptions): BrowserWindow {
-  const { sessionId, projectName, hasBeads, hasGit, onClose } = options;
-  const indicators = [hasGit ? '⎇' : '', hasBeads ? '◆' : ''].filter(Boolean).join('');
+  const { sessionId, projectName, hasBeads, hasGit, hasGithub, onClose } = options;
+  // Show GitHub indicator if github remote exists, otherwise show git indicator
+  const gitIndicator = hasGithub ? '⊛' : hasGit ? '⎇' : '';
+  const indicators = [gitIndicator, hasBeads ? '◆' : ''].filter(Boolean).join('');
   const title = indicators ? `${indicators} ${projectName}` : projectName;
 
   const win = new BrowserWindow({

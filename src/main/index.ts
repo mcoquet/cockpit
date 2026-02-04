@@ -177,6 +177,7 @@ function registerIpcHandlers(): void {
       projectName,
       hasBeads: project?.hasBeads,
       hasGit: project?.hasGit,
+      hasGithub: project?.hasGithub,
       onClose: () => {
         console.log('[terminal-window] closed, cleaning up session:', sessionId);
         pty.killSession(sessionId);

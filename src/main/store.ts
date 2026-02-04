@@ -32,12 +32,24 @@ function checkHasGit(projectPath: string): boolean {
   return fs.existsSync(fullPath);
 }
 
+function checkHasGithub(projectPath: string): boolean {
+  const configPath = path.join(os.homedir(), projectPath, '.git', 'config');
+  if (!fs.existsSync(configPath)) return false;
+  try {
+    const config = fs.readFileSync(configPath, 'utf-8');
+    return config.includes('github.com');
+  } catch {
+    return false;
+  }
+}
+
 export function getProjects(): Project[] {
   const projects = store.get('projects');
   return projects.map((p) => ({
     ...p,
     hasBeads: checkHasBeads(p.path),
     hasGit: checkHasGit(p.path),
+    hasGithub: checkHasGithub(p.path),
   }));
 }
 

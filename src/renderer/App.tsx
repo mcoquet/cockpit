@@ -127,7 +127,11 @@ export default function App() {
                 <span className="project-name">{name}</span>
                 {(project.hasGit || project.hasBeads) && (
                   <span className="project-indicators">
-                    {project.hasGit && <span className="git-indicator" title="Git repository">⎇</span>}
+                    {project.hasGithub ? (
+                      <span className="github-indicator" title="GitHub repository">⊛</span>
+                    ) : project.hasGit ? (
+                      <span className="git-indicator" title="Git repository">⎇</span>
+                    ) : null}
                     {project.hasBeads && <span className="beads-indicator" title="Has beads">◆</span>}
                   </span>
                 )}

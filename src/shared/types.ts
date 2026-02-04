@@ -4,6 +4,7 @@ export interface Project {
   description?: string;
   hasBeads?: boolean;
   hasGit?: boolean;
+  hasGithub?: boolean;
 }
 
 export interface ActiveSession {
