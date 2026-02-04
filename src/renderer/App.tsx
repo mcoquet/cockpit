@@ -128,7 +128,7 @@ export default function App() {
                 {(project.hasGit || project.hasBeads) && (
                   <span className="project-indicators">
                     {project.hasGithub ? (
-                      <span className="github-indicator" title="GitHub repository">⊛</span>
+                      <span className="github-indicator" title="GitHub repository">🐙</span>
                     ) : project.hasGit ? (
                       <span className="git-indicator" title="Git repository">⎇</span>
                     ) : null}

@@ -11,7 +11,7 @@ A macOS menubar app for managing Claude Code projects with embedded terminal win
 - **Embedded Terminals** - Each project opens in its own terminal window with xterm.js
 - **Session Management** - Track active sessions, focus existing windows, or force new sessions (Cmd+click)
 - **Project Indicators** - Visual indicators in project list and terminal titles:
-  - `⊛` GitHub repository (purple)
+  - `🐙` GitHub repository
   - `⎇` Git repository without GitHub (orange)
   - `◆` Has beads issue tracker (purple)
 - **Keyboard-First Workflow** - Arrow keys to navigate, Enter to open, search to filter
