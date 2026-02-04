@@ -35,7 +35,10 @@ body {
   background: #2a2a2a;
   color: #e0e0e0;
   font-size: 13px;
+  font-family: inherit;
   outline: none;
+  resize: none;
+  overflow: hidden;
 }
 
 .search-input:focus {

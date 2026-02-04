@@ -201,8 +201,6 @@ function registerIpcHandlers(): void {
   });
 }
 
-app.dock?.hide();
-
 app.whenReady().then(() => {
   createTray();
   registerIpcHandlers();

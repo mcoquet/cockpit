@@ -63,15 +63,25 @@ export default function App() {
     return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
   });
 
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (filtered.length > 0) {
+        handleProjectClick(filtered[0], e as unknown as React.MouseEvent);
+      }
+    }
+  }
+
   return (
     <div className="app">
       <div className="search-container">
-        <input
-          type="text"
+        <textarea
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
           className="search-input"
+          rows={1}
         />
       </div>
       <div className="project-list">
