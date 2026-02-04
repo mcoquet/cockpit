@@ -7,7 +7,9 @@ export default function App() {
   const [sessions, setSessions] = useState<Record<string, ActiveSession>>({});
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Project | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const searchRef = useRef<HTMLTextAreaElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadData();
@@ -70,11 +72,23 @@ export default function App() {
     return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
   });
 
+  // Scroll selected item into view
+  useEffect(() => {
+    const item = listRef.current?.children[selectedIndex] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex]);
+
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % filtered.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev - 1 + filtered.length) % filtered.length);
+    } else if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (filtered.length > 0) {
-        handleProjectClick(filtered[0], e as unknown as React.MouseEvent);
+        handleProjectClick(filtered[selectedIndex], e as unknown as React.MouseEvent);
       }
     }
   }
@@ -86,20 +100,24 @@ export default function App() {
           ref={searchRef}
           placeholder="Search..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setSelectedIndex(0);
+          }}
           onKeyDown={handleSearchKeyDown}
           className="search-input"
           rows={1}
         />
       </div>
-      <div className="project-list">
-        {filtered.map((project) => {
+      <div className="project-list" ref={listRef}>
+        {filtered.map((project, index) => {
           const name = project.name || project.path.split('/').pop();
           const isActive = !!sessions[project.path];
+          const isSelected = index === selectedIndex;
           return (
             <div
               key={project.path}
-              className="project-item"
+              className={`project-item ${isSelected ? 'selected' : ''}`}
               onClick={(e) => handleProjectClick(project, e)}
               onContextMenu={(e) => handleContextMenu(project, e)}
             >

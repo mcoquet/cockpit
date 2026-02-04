@@ -1,4 +1,4 @@
-import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog } from 'electron';
+import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen } from 'electron';
 import path from 'path';
 import * as store from './store';
 import { findClaudeBinary } from './claude';
@@ -54,6 +54,37 @@ function updateTrayIcon(): void {
   updateTrayTitle();
 }
 
+function showPopupWindow(): void {
+  if (!popupWindow) {
+    popupWindow = createPopupWindow();
+  }
+
+  if (popupWindow.isVisible()) {
+    popupWindow.hide();
+    return;
+  }
+
+  // Position window at tray if available, otherwise top-center of screen
+  const { width } = popupWindow.getBounds();
+  let x: number;
+  let y: number;
+
+  const trayBounds = tray?.getBounds();
+  if (trayBounds && trayBounds.x > 0) {
+    x = Math.round(trayBounds.x + trayBounds.width / 2 - width / 2);
+    y = trayBounds.y + trayBounds.height;
+  } else {
+    // Fallback: top-center of primary display
+    const display = screen.getPrimaryDisplay();
+    x = Math.round(display.bounds.x + display.bounds.width / 2 - width / 2);
+    y = display.bounds.y + 24; // Below menubar
+  }
+
+  popupWindow.setPosition(x, y);
+  popupWindow.show();
+  popupWindow.focus();
+}
+
 function createTray(): void {
   // Use empty icon - macOS will show just the title text
   const emptyIcon = nativeImage.createEmpty();
@@ -61,23 +92,8 @@ function createTray(): void {
   tray.setTitle('λ');
   tray.setToolTip('Cockpit');
 
-  tray.on('click', (_event, bounds) => {
-    console.log('[tray] clicked, popupWindow exists:', !!popupWindow, 'isVisible:', popupWindow?.isVisible());
-    if (!popupWindow) {
-      popupWindow = createPopupWindow();
-    }
-
-    if (popupWindow.isVisible()) {
-      console.log('[tray] hiding popupWindow');
-      popupWindow.hide();
-    } else {
-      console.log('[tray] showing popupWindow');
-      const { x, y } = bounds;
-      const { width } = popupWindow.getBounds();
-      popupWindow.setPosition(Math.round(x - width / 2), y);
-      popupWindow.show();
-      popupWindow.focus();
-    }
+  tray.on('click', () => {
+    showPopupWindow();
   });
 }
 
@@ -213,9 +229,25 @@ function registerIpcHandlers(): void {
   });
 }
 
+function registerGlobalShortcuts(): void {
+  // Cmd+N to open/toggle popup window
+  const registered = globalShortcut.register('CommandOrControl+N', () => {
+    showPopupWindow();
+  });
+
+  if (!registered) {
+    console.warn('[shortcuts] Failed to register Cmd+N shortcut');
+  }
+}
+
 app.whenReady().then(() => {
   createTray();
   registerIpcHandlers();
+  registerGlobalShortcuts();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {
