@@ -10,6 +10,7 @@
   ],
   "mac": {
     "category": "public.app-category.developer-tools",
-    "target": "dir"
+    "target": "dir",
+    "icon": "assets/icon.icns"
   }
 }

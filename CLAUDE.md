@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Cockpit is a macOS menubar application for managing Claude Code projects. It provides a tray icon that opens a popup window for quickly launching Claude Code sessions in iTerm2.
+Cockpit is a macOS menubar application for managing Claude Code projects. It provides a tray icon (λ) that opens a popup window for quickly launching Claude Code sessions in built-in terminal windows.
 
 ## Development Commands
 
@@ -36,19 +36,23 @@ This is an Electron app with the standard three-process architecture:
 
 | File | Purpose |
 |------|---------|
-| `src/main/index.ts` | App entry, tray creation, IPC handlers, window management |
+| `src/main/index.ts` | App entry, tray creation, IPC handlers, global shortcuts |
 | `src/main/store.ts` | Project persistence via electron-store |
-| `src/main/iterm.ts` | iTerm2 AppleScript automation (open/focus sessions) |
+| `src/main/pty.ts` | PTY session management (spawns claude CLI) |
+| `src/main/terminal-window.ts` | Terminal window creation and management |
+| `src/main/claude.ts` | Finds claude CLI binary |
 | `src/shared/types.ts` | Shared TypeScript types and `CockpitAPI` interface |
-| `src/preload.ts` | IPC bridge, defines `window.cockpit` API |
-| `src/renderer/App.tsx` | Main UI component |
+| `src/preload.ts` | IPC bridge, defines `window.cockpit` and `window.terminal` APIs |
+| `src/renderer/App.tsx` | Popup window UI (project list, search) |
+| `src/renderer/Terminal.tsx` | Terminal window UI (xterm.js) |
 
 ### Data Flow
 
-1. User clicks tray icon → window shows at tray position
-2. Click project → IPC to main → `iterm.openSession()` runs AppleScript
+1. User clicks tray icon (or Cmd+N) → popup window shows at tray position
+2. Click project → IPC to main → spawns PTY with claude CLI → opens terminal window
 3. Projects stored via electron-store at `~/Library/Application Support/cockpit/projects.json`
 4. Active sessions tracked in-memory, synced to renderer via `sessions-changed` event
+5. Terminal windows communicate with PTY via IPC (`pty-input`, `pty-output`, `pty-resize`)
 
 ### Build Output
 
@@ -58,11 +62,14 @@ This is an Electron app with the standard three-process architecture:
 
 ## Technical Notes
 
-- App hides from Dock (`app.dock?.hide()`)
-- Window is frameless, transparent, always-on-top, hides on blur
+- Tray icon uses `setTitle('λ')` with empty image for macOS menubar
+- Popup window is frameless, transparent, always-on-top, hides on blur
+- Terminal windows use xterm.js with node-pty backend
 - Project paths stored relative to home directory
 - Uses `require()` for electron-store due to ESM/CJS compatibility
 - Cmd+click on project forces new session even if one exists
+- Cmd+N global shortcut opens/toggles popup window
+- Cmd+Q shows confirmation if active sessions exist
 
 ## Workflow Rules
 

@@ -241,6 +241,11 @@ function registerGlobalShortcuts(): void {
 }
 
 app.whenReady().then(() => {
+  // Set dock icon for dev mode (packaged app uses icon from bundle)
+  if (process.platform === 'darwin' && app.dock) {
+    app.dock.setIcon(path.join(app.getAppPath(), 'assets/icon.png'));
+  }
+
   createTray();
   registerIpcHandlers();
   registerGlobalShortcuts();
