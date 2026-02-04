@@ -36,7 +36,7 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
   if (process.env.NODE_ENV === 'development') {
     win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}`);
   } else {
-    win.loadFile(path.join(__dirname, '../renderer/terminal.html'), {
+    win.loadFile(path.join(__dirname, '../../renderer/terminal.html'), {
       query: { sessionId },
     });
   }
