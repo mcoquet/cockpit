@@ -19,7 +19,23 @@ export default function App() {
     searchRef.current?.focus();
     const handleFocus = () => searchRef.current?.focus();
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+
+    // Escape key: unfocus input first, then close popup
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (document.activeElement === searchRef.current) {
+          searchRef.current?.blur();
+        } else {
+          window.cockpit.closePopup();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   async function loadData() {

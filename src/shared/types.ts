@@ -20,6 +20,7 @@ export interface CockpitAPI {
   openSession: (path: string, forceNew?: boolean) => Promise<void>;
   getActiveSessions: () => Promise<Record<string, ActiveSession>>;
   selectFolder: () => Promise<string | null>;
+  closePopup: () => void;
   onSessionsChanged: (callback: (sessions: Record<string, ActiveSession>) => void) => void;
 }
 

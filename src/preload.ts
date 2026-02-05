@@ -11,6 +11,7 @@ const cockpitApi: CockpitAPI = {
     ipcRenderer.invoke('open-session', path, forceNew),
   getActiveSessions: () => ipcRenderer.invoke('get-active-sessions'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
+  closePopup: () => ipcRenderer.send('close-popup'),
   onSessionsChanged: (callback) => {
     ipcRenderer.on('sessions-changed', (_event, sessions: Record<string, ActiveSession>) =>
       callback(sessions)

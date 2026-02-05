@@ -130,6 +130,12 @@ function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0];
   });
 
+  ipcMain.on('close-popup', () => {
+    if (popupWindow) {
+      popupWindow.hide();
+    }
+  });
+
   ipcMain.handle('get-active-sessions', () => activeSessions);
 
   ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean) => {
