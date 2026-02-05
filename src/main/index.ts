@@ -101,11 +101,23 @@ function createTray(): void {
   });
 }
 
+function updateDockVisibility(): void {
+  if (process.platform !== 'darwin' || !app.dock) return;
+
+  const hasActiveSessions = Object.keys(activeSessions).length > 0;
+  if (hasActiveSessions) {
+    app.dock.show();
+  } else {
+    app.dock.hide();
+  }
+}
+
 function notifySessionsChanged(): void {
   if (popupWindow) {
     popupWindow.webContents.send('sessions-changed', activeSessions);
   }
   updateTrayIcon();
+  updateDockVisibility();
 }
 
 function registerIpcHandlers(): void {
@@ -273,6 +285,8 @@ app.whenReady().then(() => {
   // Set dock icon for dev mode (packaged app uses icon from bundle)
   if (process.platform === 'darwin' && app.dock) {
     app.dock.setIcon(path.join(app.getAppPath(), 'assets/icon.png'));
+    // Hide dock initially (show when sessions are active)
+    app.dock.hide();
   }
 
   createTray();
