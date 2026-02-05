@@ -64,12 +64,22 @@ This is an Electron app with the standard three-process architecture:
 
 - Tray icon uses `setTitle('λ')` with empty image for macOS menubar
 - Popup window is frameless, transparent, always-on-top, hides on blur
-- Terminal windows use xterm.js with node-pty backend
+- Terminal windows use xterm.js with node-pty backend, `titleBarStyle: 'hiddenInset'` for dark title bar
 - Project paths stored relative to home directory
 - Uses `require()` for electron-store due to ESM/CJS compatibility
 - Cmd+click on project forces new session even if one exists
-- Cmd+N global shortcut opens/toggles popup window
+- Cmd+N is a **local** shortcut (app menu accelerator, only works when Cockpit is active)
+- Cmd+` is a **global** shortcut (cycles terminal windows from any app)
 - Cmd+Q shows confirmation if active sessions exist
+- Dock visibility toggles based on active sessions (`app.dock.show()`/`app.dock.hide()`)
+- Bell notifications detect `\x07` in PTY output, debounced to 10s per session
+
+## Releases
+
+GitHub Actions workflow (`.github/workflows/release.yml`) builds on tag push:
+- Triggers on `v*` tags (e.g., `git tag v1.0.0 && git push origin v1.0.0`)
+- Builds DMG for arm64 and x64
+- Uploads to GitHub Releases (unsigned - users right-click → Open)
 
 ## Workflow Rules
 

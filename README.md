@@ -9,16 +9,30 @@ A macOS menubar app for managing Claude Code projects with embedded terminal win
 
 - **Menubar Quick Access** - Click the tray icon (λ) or press **Cmd+N** to see all your projects
 - **Embedded Terminals** - Each project opens in its own terminal window with xterm.js
+- **Dark Native UI** - Terminal windows blend seamlessly with dark title bars
 - **Session Management** - Track active sessions, focus existing windows, or force new sessions (Cmd+click)
+- **Smart Dock Behavior** - App hides from Dock when no sessions are running
+- **Bell Notifications** - macOS notifications when Claude needs attention (with 10s debounce)
 - **Project Indicators** - Visual indicators in project list and terminal titles:
   - `🐙` GitHub repository
   - `⎇` Git repository without GitHub (orange)
   - `◆` Has beads issue tracker (purple)
-- **Keyboard-First Workflow** - Arrow keys to navigate, Enter to open, search to filter
+- **Keyboard-First Workflow** - Arrow keys to navigate, Enter to open, Escape to close, search to filter
+- **Window Cycling** - **Cmd+`** cycles through terminal windows from anywhere
 - **Safe Quit** - Confirmation dialog when quitting with active sessions
 - **Auto-detect Claude** - Finds claude CLI at common paths (`~/.claude/bin/claude`, `/usr/local/bin/claude`, `/opt/homebrew/bin/claude`)
 
 ## Installation
+
+### From Releases (Recommended)
+
+Download the latest DMG from [GitHub Releases](https://github.com/mcoquet/cockpit/releases):
+- `Cockpit-mac-arm64.dmg` - Apple Silicon (M1/M2/M3)
+- `Cockpit-mac-x64.dmg` - Intel
+
+> **Note:** The app is unsigned. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
+
+### From Source
 
 ```bash
 # Clone the repo
@@ -47,12 +61,14 @@ The packaged app will be in `out/mac-arm64/Cockpit.app`.
 
 ### Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+N | Open/toggle project list |
-| ↑/↓ | Navigate projects |
-| Enter | Open selected project |
-| Type | Filter projects by name/description |
+| Shortcut | Action | Scope |
+|----------|--------|-------|
+| Cmd+N | Open/toggle project list | When Cockpit is active |
+| Cmd+` | Cycle through terminal windows | Global |
+| Escape | Unfocus search / close popup | In popup |
+| ↑/↓ | Navigate projects | In popup |
+| Enter | Open selected project | In popup |
+| Type | Filter projects by name/description | In popup |
 
 ### Terminal Input
 
