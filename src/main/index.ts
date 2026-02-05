@@ -1,4 +1,4 @@
-import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification } from 'electron';
+import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification, Menu } from 'electron';
 import path from 'path';
 import * as store from './store';
 import { findClaudeBinary } from './claude';
@@ -271,14 +271,51 @@ function registerIpcHandlers(): void {
 }
 
 function registerGlobalShortcuts(): void {
-  // Cmd+N to open/toggle popup window
-  const registered = globalShortcut.register('CommandOrControl+N', () => {
-    showPopupWindow();
+  // Cmd+` to cycle through terminal windows
+  const registeredBacktick = globalShortcut.register('CommandOrControl+`', () => {
+    terminalWindow.cycleTerminalWindows();
   });
 
-  if (!registered) {
-    console.warn('[shortcuts] Failed to register Cmd+N shortcut');
+  if (!registeredBacktick) {
+    console.warn('[shortcuts] Failed to register Cmd+` shortcut');
   }
+}
+
+function createAppMenu(): void {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Session',
+          accelerator: 'CommandOrControl+N',
+          click: () => showPopupWindow(),
+        },
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' },
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 }
 
 app.whenReady().then(() => {
@@ -290,6 +327,7 @@ app.whenReady().then(() => {
   }
 
   createTray();
+  createAppMenu();
   registerIpcHandlers();
   registerGlobalShortcuts();
 });

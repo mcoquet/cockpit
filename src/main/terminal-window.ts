@@ -82,3 +82,21 @@ export function closeTerminalWindow(sessionId: string): void {
     win.close();
   }
 }
+
+export function cycleTerminalWindows(): void {
+  const windows = Array.from(terminalWindows.values()).filter(w => !w.isDestroyed());
+  if (windows.length === 0) return;
+
+  const focused = windows.find(w => w.isFocused());
+  if (!focused) {
+    // No terminal focused, focus the first one
+    windows[0].show();
+    windows[0].focus();
+    return;
+  }
+
+  const currentIndex = windows.indexOf(focused);
+  const nextIndex = (currentIndex + 1) % windows.length;
+  windows[nextIndex].show();
+  windows[nextIndex].focus();
+}
