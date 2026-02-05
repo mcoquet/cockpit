@@ -25,6 +25,9 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
     minWidth: 400,
     minHeight: 300,
     title,
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#1e1e1e',
+    trafficLightPosition: { x: 12, y: 12 },
     webPreferences: {
       preload: path.join(__dirname, '../preload.js'),
       contextIsolation: true,
@@ -32,12 +35,12 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
     },
   });
 
-  // Pass sessionId to renderer via query param
+  // Pass sessionId and title to renderer via query param
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}`);
+    win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}&title=${encodeURIComponent(title)}`);
   } else {
     win.loadFile(path.join(__dirname, '../../renderer/terminal.html'), {
-      query: { sessionId },
+      query: { sessionId, title },
     });
   }
 

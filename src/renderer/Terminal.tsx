@@ -91,5 +91,12 @@ export default function Terminal() {
     };
   }, []);
 
-  return <div ref={containerRef} className="terminal-container" />;
+  const title = new URLSearchParams(window.location.search).get('title') || '';
+
+  return (
+    <>
+      <div className="drag-region">{title}</div>
+      <div ref={containerRef} className="terminal-container" />
+    </>
+  );
 }
