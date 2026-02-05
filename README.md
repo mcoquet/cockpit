@@ -7,7 +7,7 @@ A macOS menubar app for managing Claude Code projects with embedded terminal win
 
 ## Features
 
-- **Menubar Quick Access** - Click the tray icon (λ) or press **Cmd+N** to see all your projects
+- **Menubar Quick Access** - Click the tray icon (λ) to see all your projects
 - **Embedded Terminals** - Each project opens in its own terminal window with xterm.js
 - **Dark Native UI** - Terminal windows blend seamlessly with dark title bars
 - **Session Management** - Track active sessions, focus existing windows, or force new sessions (Cmd+click)
@@ -27,8 +27,8 @@ A macOS menubar app for managing Claude Code projects with embedded terminal win
 ### From Releases (Recommended)
 
 Download the latest DMG from [GitHub Releases](https://github.com/mcoquet/cockpit/releases):
-- `Cockpit-mac-arm64.dmg` - Apple Silicon (M1/M2/M3)
-- `Cockpit-mac-x64.dmg` - Intel
+- `Cockpit-{version}-arm64.dmg` - Apple Silicon (M1/M2/M3)
+- `Cockpit-{version}-x64.dmg` - Intel
 
 > **Note:** The app is unsigned. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
 
@@ -53,7 +53,7 @@ The packaged app will be in `out/mac-arm64/Cockpit.app`.
 
 ## Usage
 
-1. Click the menubar icon (λ) or press **Cmd+N** to open the project list
+1. Click the menubar icon (λ) to open the project list (or **Cmd+N** when Cockpit is active)
 2. Use **arrow keys** to navigate, **Enter** to open, or type to search/filter
 3. Click **+ Add Project** to add a project folder (auto-opens a session)
 4. **Cmd+click** to force a new session even if one exists
