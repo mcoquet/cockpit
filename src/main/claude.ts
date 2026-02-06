@@ -17,9 +17,13 @@ export function findClaudeBinary(): string | null {
     }
   }
 
-  // Fall back to which command
+  // Fall back to which command in a login shell (picks up fnm/nvm/etc)
+  const shell = process.env.SHELL || '/bin/zsh';
   try {
-    const result = execFileSync('which', ['claude'], { encoding: 'utf-8' }).trim();
+    const result = execFileSync(shell, ['-l', '-c', 'which claude'], {
+      encoding: 'utf-8',
+      timeout: 5000,
+    }).trim();
     if (result && fs.existsSync(result)) {
       return result;
     }
