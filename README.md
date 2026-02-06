@@ -31,13 +31,15 @@ brew tap mcoquet/cockpit
 brew install --cask cockpit
 ```
 
-> **Note:** The app is unsigned. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
+> **Note:** The app is unsigned but the cask automatically removes the quarantine attribute.
 
 ### From Releases
 
 Download the latest DMG from [GitHub Releases](https://github.com/mcoquet/cockpit/releases):
 - `Cockpit-{version}-arm64.dmg` - Apple Silicon (M1/M2/M3)
 - `Cockpit-{version}-x64.dmg` - Intel
+
+> **Note:** The app is unsigned. After installing, run: `xattr -d com.apple.quarantine /Applications/Cockpit.app`
 
 ### From Source
 
