@@ -69,21 +69,11 @@ function showPopupWindow(): void {
     return;
   }
 
-  // Position window at tray if available, otherwise top-center of screen
-  const { width } = popupWindow.getBounds();
-  let x: number;
-  let y: number;
-
-  const trayBounds = tray?.getBounds();
-  if (trayBounds && trayBounds.x > 0) {
-    x = Math.round(trayBounds.x + trayBounds.width / 2 - width / 2);
-    y = trayBounds.y + trayBounds.height;
-  } else {
-    // Fallback: top-center of primary display
-    const display = screen.getPrimaryDisplay();
-    x = Math.round(display.bounds.x + display.bounds.width / 2 - width / 2);
-    y = display.bounds.y + 24; // Below menubar
-  }
+  // Position window center-screen, slightly above middle (like Raycast/Alfred)
+  const { width, height } = popupWindow.getBounds();
+  const display = screen.getPrimaryDisplay();
+  const x = Math.round(display.bounds.x + display.bounds.width / 2 - width / 2);
+  const y = Math.round(display.bounds.y + display.bounds.height / 3 - height / 2);
 
   popupWindow.setPosition(x, y);
   popupWindow.show();
