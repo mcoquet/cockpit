@@ -24,13 +24,20 @@ A macOS menubar app for managing Claude Code projects with embedded terminal win
 
 ## Installation
 
-### From Releases (Recommended)
+### Homebrew (Recommended)
+
+```bash
+brew tap mcoquet/cockpit
+brew install --cask cockpit
+```
+
+> **Note:** The app is unsigned. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
+
+### From Releases
 
 Download the latest DMG from [GitHub Releases](https://github.com/mcoquet/cockpit/releases):
 - `Cockpit-{version}-arm64.dmg` - Apple Silicon (M1/M2/M3)
 - `Cockpit-{version}-x64.dmg` - Intel
-
-> **Note:** The app is unsigned. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
 
 ### From Source
 
