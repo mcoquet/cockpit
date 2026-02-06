@@ -1,6 +1,6 @@
 # Cockpit
 
-Stop juggling terminal windows. Cockpit lives in your menubar and gives you one-click access to all your Claude Code projects.
+A launchpad for Claude Code.
 
 ```bash
 brew tap mcoquet/cockpit && brew install --cask cockpit
