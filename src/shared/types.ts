@@ -12,6 +12,11 @@ export interface ActiveSession {
   windowId: number;
 }
 
+export interface AppSettings {
+  globalShortcut: string;
+  launchAtLogin: boolean;
+}
+
 export interface CockpitAPI {
   getProjects: () => Promise<Project[]>;
   addProject: (path: string) => Promise<Project>;
@@ -22,6 +27,8 @@ export interface CockpitAPI {
   selectFolder: () => Promise<string | null>;
   closePopup: () => void;
   onSessionsChanged: (callback: (sessions: Record<string, ActiveSession>) => void) => void;
+  getSettings: () => Promise<AppSettings>;
+  saveSettings: (settings: AppSettings) => Promise<void>;
 }
 
 export interface TerminalAPI {

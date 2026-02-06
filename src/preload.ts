@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, ActiveSession, CockpitAPI, TerminalAPI } from './shared/types';
+import type { Project, ActiveSession, AppSettings, CockpitAPI, TerminalAPI } from './shared/types';
 
 const cockpitApi: CockpitAPI = {
   getProjects: () => ipcRenderer.invoke('get-projects'),
@@ -17,6 +17,8 @@ const cockpitApi: CockpitAPI = {
       callback(sessions)
     );
   },
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings: AppSettings) => ipcRenderer.invoke('save-settings', settings),
 };
 
 const terminalApi: TerminalAPI = {

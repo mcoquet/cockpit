@@ -5,10 +5,13 @@ import { findClaudeBinary } from './claude';
 import * as pty from './pty';
 import * as terminalWindow from './terminal-window';
 import { requestPermission } from './permissions';
+import * as settings from './settings';
+import type { AppSettings } from '../shared/types';
 import type { Project, ActiveSession } from '../shared/types';
 
 let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
 
 // Track active sessions in memory
 const activeSessions: Record<string, ActiveSession> = {};
@@ -92,6 +95,42 @@ function createTray(): void {
   });
 }
 
+function createSettingsWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 400,
+    height: 300,
+    title: 'Cockpit Settings',
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  if (process.env.NODE_ENV === 'development') {
+    win.loadURL('http://localhost:5173/settings.html');
+  } else {
+    win.loadFile(path.join(__dirname, '../../renderer/settings.html'));
+  }
+
+  win.on('closed', () => {
+    settingsWindow = null;
+  });
+
+  return win;
+}
+
+function showSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
+  }
+  settingsWindow = createSettingsWindow();
+}
+
 function updateDockVisibility(): void {
   if (process.platform !== 'darwin' || !app.dock) return;
 
@@ -137,6 +176,12 @@ function registerIpcHandlers(): void {
     if (popupWindow) {
       popupWindow.hide();
     }
+  });
+
+  ipcMain.handle('get-settings', () => settings.getSettings());
+
+  ipcMain.handle('save-settings', (_event, newSettings: AppSettings) => {
+    settings.saveSettings(newSettings);
   });
 
   ipcMain.handle('get-active-sessions', () => activeSessions);
@@ -279,6 +324,12 @@ function createAppMenu(): void {
       submenu: [
         { role: 'about' },
         { type: 'separator' },
+        {
+          label: 'Settings...',
+          accelerator: 'CommandOrControl+,',
+          click: () => showSettingsWindow(),
+        },
+        { type: 'separator' },
         { role: 'hide' },
         { role: 'hideOthers' },
         { role: 'unhide' },
@@ -368,6 +419,9 @@ app.whenReady().then(() => {
   createAppMenu();
   registerIpcHandlers();
   registerGlobalShortcuts();
+
+  // Initialize settings and register global shortcut for popup
+  settings.initializeSettings(() => showPopupWindow());
 });
 
 app.on('will-quit', () => {

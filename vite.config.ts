@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'src/renderer/index.html'),
         terminal: resolve(__dirname, 'src/renderer/terminal.html'),
+        settings: resolve(__dirname, 'src/renderer/settings.html'),
       },
     },
   },
