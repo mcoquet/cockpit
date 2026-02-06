@@ -12,7 +12,12 @@
     "category": "public.app-category.developer-tools",
     "target": ["dmg", "dir"],
     "icon": "assets/icon.icns",
-    "artifactName": "${productName}-${version}-${arch}.${ext}"
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "extendInfo": {
+      "NSCalendarsUsageDescription": "Cockpit needs calendar access to allow Claude Code tools to manage your events.",
+      "NSRemindersUsageDescription": "Cockpit needs reminders access to allow Claude Code tools to manage your reminders.",
+      "NSAppleEventsUsageDescription": "Cockpit needs automation access to allow Claude Code tools to control other apps."
+    }
   },
   "dmg": {
     "contents": [

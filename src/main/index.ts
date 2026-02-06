@@ -4,6 +4,7 @@ import * as store from './store';
 import { findClaudeBinary } from './claude';
 import * as pty from './pty';
 import * as terminalWindow from './terminal-window';
+import { requestPermission } from './permissions';
 import type { Project, ActiveSession } from '../shared/types';
 
 let tray: Tray | null = null;
@@ -302,6 +303,53 @@ function createAppMenu(): void {
           label: 'New Session',
           accelerator: 'CommandOrControl+N',
           click: () => showPopupWindow(),
+        },
+      ],
+    },
+    {
+      label: 'Permissions',
+      submenu: [
+        {
+          label: 'Request Calendar Access',
+          click: async () => {
+            const granted = await requestPermission('calendar');
+            if (!granted) {
+              dialog.showMessageBox({
+                type: 'info',
+                title: 'Calendar Access',
+                message: 'Calendar access was denied or not yet granted.',
+                detail: 'Go to System Settings > Privacy & Security > Calendar to enable access for Cockpit.',
+              });
+            }
+          },
+        },
+        {
+          label: 'Request Reminders Access',
+          click: async () => {
+            const granted = await requestPermission('reminders');
+            if (!granted) {
+              dialog.showMessageBox({
+                type: 'info',
+                title: 'Reminders Access',
+                message: 'Reminders access was denied or not yet granted.',
+                detail: 'Go to System Settings > Privacy & Security > Reminders to enable access for Cockpit.',
+              });
+            }
+          },
+        },
+        {
+          label: 'Request Automation Access',
+          click: async () => {
+            const granted = await requestPermission('automation');
+            if (!granted) {
+              dialog.showMessageBox({
+                type: 'info',
+                title: 'Automation Access',
+                message: 'Automation access was denied or not yet granted.',
+                detail: 'Go to System Settings > Privacy & Security > Automation to enable access for Cockpit.',
+              });
+            }
+          },
         },
       ],
     },
