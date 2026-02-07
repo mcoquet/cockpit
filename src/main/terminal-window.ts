@@ -100,3 +100,12 @@ export function cycleTerminalWindows(): void {
   windows[nextIndex].show();
   windows[nextIndex].focus();
 }
+
+export function getFocusedTerminalWindowId(): number | null {
+  for (const win of terminalWindows.values()) {
+    if (!win.isDestroyed() && win.isFocused()) {
+      return win.id;
+    }
+  }
+  return null;
+}

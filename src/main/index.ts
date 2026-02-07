@@ -192,95 +192,12 @@ function registerIpcHandlers(): void {
   ipcMain.handle('get-active-sessions', () => activeSessions);
 
   ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean) => {
-    const existing = activeSessions[projectPath];
-    console.log('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
-
     // Hide popup window immediately when opening a session
     if (popupWindow) {
       popupWindow.hide();
     }
 
-    if (existing && !forceNew) {
-      // Check if session still exists
-      const exists = pty.sessionExists(existing.sessionId);
-      console.log('[open-session] sessionExists:', exists);
-      if (exists) {
-        const focused = terminalWindow.focusTerminalWindow(existing.sessionId);
-        console.log('[open-session] focusTerminalWindow result:', focused);
-        return;
-      }
-      // Session is gone, remove it
-      console.log('[open-session] session gone, removing');
-      delete activeSessions[projectPath];
-    }
-
-    // Check for claude binary
-    const claudePath = findClaudeBinary();
-    if (!claudePath) {
-      dialog.showErrorBox(
-        'Claude not found',
-        'Could not find the claude CLI. Please ensure claude is installed and accessible.'
-      );
-      return;
-    }
-
-    // Get project name for window title
-    const projects = store.getProjects();
-    const project = projects.find((p) => p.path === projectPath);
-    const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
-
-    // Spawn PTY with claude
-    console.log('[open-session] creating new session with claude at:', claudePath);
-    const { id: sessionId } = pty.spawnClaude(projectPath, claudePath);
-    console.log('[open-session] new sessionId:', sessionId);
-
-    // Create terminal window
-    const win = terminalWindow.createTerminalWindow({
-      sessionId,
-      projectName,
-      hasBeads: project?.hasBeads,
-      hasGit: project?.hasGit,
-      hasGithub: project?.hasGithub,
-      onClose: () => {
-        console.log('[terminal-window] closed, cleaning up session:', sessionId);
-        pty.killSession(sessionId);
-        delete activeSessions[projectPath];
-        delete lastBellTime[sessionId];
-        notifySessionsChanged();
-      },
-    });
-
-    activeSessions[projectPath] = { sessionId, windowId: win.id };
-    notifySessionsChanged();
-
-    // Relay PTY output to terminal window
-    pty.onSessionOutput(sessionId, (data) => {
-      const termWin = terminalWindow.getTerminalWindow(sessionId);
-      if (termWin && !termWin.isDestroyed()) {
-        termWin.webContents.send('pty-output', data);
-
-        // Detect bell character and show notification if window not focused
-        if (data.includes('\x07') && !termWin.isFocused()) {
-          const now = Date.now();
-          const lastTime = lastBellTime[sessionId] || 0;
-          if (now - lastTime > BELL_DEBOUNCE_MS) {
-            lastBellTime[sessionId] = now;
-            const iconPath = path.join(app.getAppPath(), 'assets/icon.png');
-            new Notification({
-              title: 'Cockpit',
-              body: `${projectName} needs attention`,
-              icon: iconPath,
-            }).show();
-          }
-        }
-      }
-    });
-
-    // Close terminal window when PTY exits
-    pty.onSessionExit(sessionId, () => {
-      console.log('[pty-exit] session exited:', sessionId);
-      terminalWindow.closeTerminalWindow(sessionId);
-    });
+    await openSessionForProject(projectPath, forceNew ?? false);
   });
 
   // Terminal IPC handlers
@@ -322,6 +239,116 @@ function registerGlobalShortcuts(): void {
   }
 }
 
+function openNewSessionInCurrentProject(): void {
+  const focusedWindowId = terminalWindow.getFocusedTerminalWindowId();
+  if (!focusedWindowId) {
+    // No terminal window focused, show popup instead
+    showPopupWindow();
+    return;
+  }
+
+  // Find the project path for the focused window
+  let projectPath: string | null = null;
+  for (const [path, session] of Object.entries(activeSessions)) {
+    if (session.windowId === focusedWindowId) {
+      projectPath = path;
+      break;
+    }
+  }
+
+  if (!projectPath) {
+    showPopupWindow();
+    return;
+  }
+
+  // Trigger open-session with forceNew=true
+  // We need to emit this as if it came from IPC
+  openSessionForProject(projectPath, true);
+}
+
+async function openSessionForProject(projectPath: string, forceNew: boolean): Promise<void> {
+  const existing = activeSessions[projectPath];
+  console.log('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
+
+  if (existing && !forceNew) {
+    const exists = pty.sessionExists(existing.sessionId);
+    console.log('[open-session] sessionExists:', exists);
+    if (exists) {
+      const focused = terminalWindow.focusTerminalWindow(existing.sessionId);
+      console.log('[open-session] focusTerminalWindow result:', focused);
+      return;
+    }
+    console.log('[open-session] session gone, removing');
+    delete activeSessions[projectPath];
+  }
+
+  const claudePath = findClaudeBinary();
+  if (!claudePath) {
+    dialog.showErrorBox(
+      'Claude not found',
+      'Could not find the claude CLI. Please ensure claude is installed and accessible.'
+    );
+    return;
+  }
+
+  const projects = store.getProjects();
+  const project = projects.find((p) => p.path === projectPath);
+  const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
+
+  console.log('[open-session] creating new session with claude at:', claudePath);
+  const { id: sessionId } = pty.spawnClaude(projectPath, claudePath);
+  console.log('[open-session] new sessionId:', sessionId);
+
+  const win = terminalWindow.createTerminalWindow({
+    sessionId,
+    projectName,
+    hasBeads: project?.hasBeads,
+    hasGit: project?.hasGit,
+    hasGithub: project?.hasGithub,
+    onClose: () => {
+      console.log('[terminal-window] closed, cleaning up session:', sessionId);
+      pty.killSession(sessionId);
+      // Only delete if this is the session for this project
+      if (activeSessions[projectPath]?.sessionId === sessionId) {
+        delete activeSessions[projectPath];
+      }
+      delete lastBellTime[sessionId];
+      notifySessionsChanged();
+    },
+  });
+
+  // For multiple sessions per project, we need a different key
+  // But for now, keep the simple model - just track the latest
+  activeSessions[projectPath] = { sessionId, windowId: win.id };
+  notifySessionsChanged();
+
+  pty.onSessionOutput(sessionId, (data) => {
+    const termWin = terminalWindow.getTerminalWindow(sessionId);
+    if (termWin && !termWin.isDestroyed()) {
+      termWin.webContents.send('pty-output', data);
+
+      if (data.includes('\x07') && !termWin.isFocused()) {
+        const now = Date.now();
+        const lastTime = lastBellTime[sessionId] || 0;
+        if (now - lastTime > BELL_DEBOUNCE_MS) {
+          lastBellTime[sessionId] = now;
+          const iconPath = path.join(app.getAppPath(), 'assets/icon.png');
+          new Notification({
+            title: 'Cockpit',
+            body: `${projectName} needs attention`,
+            icon: iconPath,
+          }).show();
+        }
+      }
+    }
+  });
+
+  pty.onSessionExit(sessionId, () => {
+    console.log('[pty-exit] session exited:', sessionId);
+    terminalWindow.closeTerminalWindow(sessionId);
+  });
+}
+
 function createAppMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -346,9 +373,9 @@ function createAppMenu(): void {
       label: 'File',
       submenu: [
         {
-          label: 'New Session',
+          label: 'New Session in Project',
           accelerator: 'CommandOrControl+N',
-          click: () => showPopupWindow(),
+          click: () => openNewSessionInCurrentProject(),
         },
       ],
     },
