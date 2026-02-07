@@ -29,6 +29,9 @@ export interface CockpitAPI {
   onSessionsChanged: (callback: (sessions: Record<string, ActiveSession>) => void) => void;
   getSettings: () => Promise<AppSettings>;
   saveSettings: (settings: AppSettings) => Promise<void>;
+  getCreateLocation: () => Promise<string>;
+  setCreateLocation: (path: string) => Promise<void>;
+  createProject: (name: string, location: string) => Promise<boolean>;
 }
 
 export interface TerminalAPI {

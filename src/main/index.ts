@@ -189,6 +189,45 @@ function registerIpcHandlers(): void {
     settings.saveSettings(newSettings);
   });
 
+  ipcMain.handle('get-create-location', () => settings.getCreateLocation());
+
+  ipcMain.handle('set-create-location', (_event, location: string) => {
+    settings.setCreateLocation(location);
+  });
+
+  ipcMain.handle('create-project', async (_event, name: string, location: string) => {
+    const fs = await import('fs/promises');
+    const os = await import('os');
+    const pathModule = await import('path');
+
+    // Expand ~ to home directory
+    const expandedLocation = location.startsWith('~')
+      ? pathModule.join(os.homedir(), location.slice(1))
+      : location;
+
+    const projectPath = pathModule.join(expandedLocation, name);
+
+    try {
+      // Create the directory
+      await fs.mkdir(projectPath, { recursive: true });
+
+      // Add to projects and open session
+      const project = await store.addProject(projectPath);
+
+      // Hide popup
+      if (popupWindow) {
+        popupWindow.hide();
+      }
+
+      await openSessionForProject(project.path, false);
+      return true;
+    } catch (err) {
+      console.error('[create-project] Failed to create project:', err);
+      dialog.showErrorBox('Failed to create project', `Could not create folder: ${projectPath}`);
+      return false;
+    }
+  });
+
   ipcMain.handle('get-active-sessions', () => activeSessions);
 
   ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean) => {

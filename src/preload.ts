@@ -19,6 +19,9 @@ const cockpitApi: CockpitAPI = {
   },
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings: AppSettings) => ipcRenderer.invoke('save-settings', settings),
+  getCreateLocation: () => ipcRenderer.invoke('get-create-location'),
+  setCreateLocation: (path: string) => ipcRenderer.invoke('set-create-location', path),
+  createProject: (name: string, location: string) => ipcRenderer.invoke('create-project', name, location),
 };
 
 const terminalApi: TerminalAPI = {

@@ -13,12 +13,14 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 interface SettingsStoreSchema {
   settings: AppSettings;
+  createLocation: string;
 }
 
 const store = new Store({
   name: 'settings',
   defaults: {
     settings: DEFAULT_SETTINGS,
+    createLocation: '~/Projects',
   },
 }) as {
   get: <K extends keyof SettingsStoreSchema>(key: K) => SettingsStoreSchema[K];
@@ -30,6 +32,14 @@ let shortcutCallback: (() => void) | null = null;
 
 export function getSettings(): AppSettings {
   return store.get('settings');
+}
+
+export function getCreateLocation(): string {
+  return store.get('createLocation');
+}
+
+export function setCreateLocation(location: string): void {
+  store.set('createLocation', location);
 }
 
 export function saveSettings(settings: AppSettings): void {
