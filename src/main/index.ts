@@ -97,12 +97,17 @@ function createTray(): void {
 
 function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 420,
+    height: 420,
     title: 'Cockpit Settings',
     resizable: false,
     minimizable: false,
     maximizable: false,
+    vibrancy: 'under-window',
+    visualEffectState: 'active',
+    transparent: true,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 12 },
     webPreferences: {
       preload: path.join(__dirname, '../preload.js'),
       contextIsolation: true,

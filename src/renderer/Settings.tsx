@@ -5,18 +5,15 @@ interface Settings {
   launchAtLogin: boolean;
 }
 
-const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+Space';
-
 export default function Settings() {
   const [settings, setSettings] = useState<Settings>({
-    globalShortcut: DEFAULT_SHORTCUT,
+    globalShortcut: '',
     launchAtLogin: false,
   });
   const [recording, setRecording] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    // Load settings on mount
     window.cockpit.getSettings().then(setSettings);
   }, []);
 
@@ -29,17 +26,14 @@ export default function Settings() {
 
     e.preventDefault();
 
-    // Build shortcut string
     const parts: string[] = [];
     if (e.metaKey) parts.push('Command');
     if (e.ctrlKey) parts.push('Control');
     if (e.altKey) parts.push('Alt');
     if (e.shiftKey) parts.push('Shift');
 
-    // Add the key if it's not just a modifier
     const key = e.key;
     if (!['Meta', 'Control', 'Alt', 'Shift'].includes(key)) {
-      // Normalize key names
       const keyName = key.length === 1 ? key.toUpperCase() : key;
       parts.push(keyName);
 
@@ -74,44 +68,50 @@ export default function Settings() {
     <div className="settings">
       <h1>Settings</h1>
 
-      <div className="setting-group">
-        <label>Global Shortcut</label>
-        <p className="setting-description">
-          Press this shortcut from anywhere to open Cockpit
-        </p>
-        <div className="shortcut-input">
-          <div
-            className={`shortcut-display ${recording ? 'recording' : ''}`}
-            onClick={handleRecordShortcut}
-            onKeyDown={handleKeyDown}
-            tabIndex={0}
-          >
-            {recording ? 'Press keys...' : formatShortcut(settings.globalShortcut)}
+      <div className="settings-card">
+        <div className="card-title">Shortcuts</div>
+        <div className="setting-row">
+          <div>
+            <div className="setting-label">Global Shortcut</div>
+            <div className="setting-description">Open Cockpit from anywhere</div>
           </div>
-          {settings.globalShortcut && (
-            <button className="clear-btn" onClick={handleClearShortcut}>
-              ✕
-            </button>
-          )}
+          <div className="shortcut-wrapper">
+            <div
+              className={`shortcut-display ${recording ? 'recording' : ''}`}
+              onClick={handleRecordShortcut}
+              onKeyDown={handleKeyDown}
+              tabIndex={0}
+            >
+              {recording ? 'Press keys...' : formatShortcut(settings.globalShortcut)}
+            </div>
+            {settings.globalShortcut && (
+              <button className="clear-btn" onClick={handleClearShortcut}>
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="setting-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={settings.launchAtLogin}
-            onChange={(e) =>
-              setSettings((s) => ({ ...s, launchAtLogin: e.target.checked }))
+      <div className="settings-card">
+        <div className="card-title">General</div>
+        <div className="setting-row">
+          <div>
+            <div className="setting-label">Launch at Login</div>
+            <div className="setting-description">Start Cockpit when you log in</div>
+          </div>
+          <div
+            className={`toggle-switch ${settings.launchAtLogin ? 'active' : ''}`}
+            onClick={() =>
+              setSettings((s) => ({ ...s, launchAtLogin: !s.launchAtLogin }))
             }
           />
-          Launch at login
-        </label>
+        </div>
       </div>
 
       <div className="actions">
-        <button className="save-btn" onClick={handleSave}>
-          {saved ? 'Saved!' : 'Save'}
+        <button className={`save-btn ${saved ? 'saved' : ''}`} onClick={handleSave}>
+          {saved ? 'Saved!' : 'Save Settings'}
         </button>
       </div>
     </div>
