@@ -229,9 +229,9 @@ function registerIpcHandlers(): void {
 }
 
 function registerGlobalShortcuts(): void {
-  // Cmd+` to cycle through terminal windows
+  // Cmd+` to cycle through terminal windows (forward) - global shortcut
   const registeredBacktick = globalShortcut.register('CommandOrControl+`', () => {
-    terminalWindow.cycleTerminalWindows();
+    terminalWindow.cycleTerminalWindows('next');
   });
 
   if (!registeredBacktick) {
@@ -431,6 +431,17 @@ function createAppMenu(): void {
       submenu: [
         { role: 'minimize' },
         { role: 'close' },
+        { type: 'separator' },
+        {
+          label: 'Next Terminal',
+          accelerator: 'CommandOrControl+Right',
+          click: () => terminalWindow.cycleTerminalWindows('next'),
+        },
+        {
+          label: 'Previous Terminal',
+          accelerator: 'CommandOrControl+Left',
+          click: () => terminalWindow.cycleTerminalWindows('prev'),
+        },
       ],
     },
   ];

@@ -2,6 +2,7 @@ import { BrowserWindow } from 'electron';
 import path from 'path';
 
 const terminalWindows = new Map<string, BrowserWindow>();
+let lastFocusedTerminalId: number | null = null;
 
 export interface TerminalWindowOptions {
   sessionId: string;
@@ -53,7 +54,27 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
     }
   });
 
+  // Intercept Cmd+Left/Right before xterm.js captures them
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.meta && input.type === 'keyDown') {
+      if (input.key === 'ArrowRight') {
+        event.preventDefault();
+        cycleTerminalWindows('next');
+      } else if (input.key === 'ArrowLeft') {
+        event.preventDefault();
+        cycleTerminalWindows('prev');
+      }
+    }
+  });
+
+  win.on('focus', () => {
+    lastFocusedTerminalId = win.id;
+  });
+
   win.on('closed', () => {
+    if (lastFocusedTerminalId === win.id) {
+      lastFocusedTerminalId = null;
+    }
     terminalWindows.delete(sessionId);
     onClose?.();
   });
@@ -83,28 +104,36 @@ export function closeTerminalWindow(sessionId: string): void {
   }
 }
 
-export function cycleTerminalWindows(): void {
+export function cycleTerminalWindows(direction: 'next' | 'prev' = 'next'): void {
   const windows = Array.from(terminalWindows.values()).filter(w => !w.isDestroyed());
   if (windows.length === 0) return;
 
-  const focused = windows.find(w => w.isFocused());
-  if (!focused) {
-    // No terminal focused, focus the first one
+  // Use tracked last focused window instead of isFocused() which is unreliable in shortcut handlers
+  const lastFocused = lastFocusedTerminalId
+    ? windows.find(w => w.id === lastFocusedTerminalId)
+    : null;
+
+  if (!lastFocused) {
+    // No terminal was focused, focus the first one
     windows[0].show();
     windows[0].focus();
     return;
   }
 
-  const currentIndex = windows.indexOf(focused);
-  const nextIndex = (currentIndex + 1) % windows.length;
+  const currentIndex = windows.indexOf(lastFocused);
+  const offset = direction === 'next' ? 1 : windows.length - 1;
+  const nextIndex = (currentIndex + offset) % windows.length;
   windows[nextIndex].show();
   windows[nextIndex].focus();
 }
 
 export function getFocusedTerminalWindowId(): number | null {
-  for (const win of terminalWindows.values()) {
-    if (!win.isDestroyed() && win.isFocused()) {
-      return win.id;
+  // Check if tracked window still exists
+  if (lastFocusedTerminalId) {
+    for (const win of terminalWindows.values()) {
+      if (win.id === lastFocusedTerminalId && !win.isDestroyed()) {
+        return lastFocusedTerminalId;
+      }
     }
   }
   return null;
