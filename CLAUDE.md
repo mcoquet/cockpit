@@ -80,6 +80,11 @@ GitHub Actions workflow (`.github/workflows/release.yml`) builds on tag push:
 - Triggers on `v*` tags (e.g., `git tag v1.0.0 && git push origin v1.0.0`)
 - Builds DMG for arm64 and x64
 - Uploads to GitHub Releases (unsigned - users right-click → Open)
+- **Automatically updates Homebrew cask** in `mcoquet/homebrew-cockpit` repo:
+  - Computes SHA256 checksums for both DMGs
+  - Updates `Casks/cockpit.rb` with new version and hashes
+  - Requires `HOMEBREW_TAP_TOKEN` secret with repo access
+  - Skips prereleases (tags containing `-`, e.g., `v1.0.0-beta`)
 
 ## Workflow Rules
 
