@@ -25,13 +25,17 @@ const exitListeners = new Map<string, (() => void)[]>();
 
 export function spawnClaude(
   projectPath: string,
-  claudePath: string
+  claudePath: string,
+  options?: { continueSession?: boolean }
 ): { id: string; process: IPty } {
   const id = generateSessionId();
   const fullPath = path.join(os.homedir(), projectPath);
 
+  // Use --continue flag by default to resume previous session
+  const args = options?.continueSession !== false ? ['--continue'] : [];
+
   // Spawn claude directly so PTY exits when claude exits
-  const ptyProcess: IPty = pty.spawn(claudePath, [], {
+  const ptyProcess: IPty = pty.spawn(claudePath, args, {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,

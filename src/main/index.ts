@@ -334,8 +334,8 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
   const project = projects.find((p) => p.path === projectPath);
   const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
 
-  console.log('[open-session] creating new session with claude at:', claudePath);
-  const { id: sessionId } = pty.spawnClaude(projectPath, claudePath);
+  console.log('[open-session] creating new session with claude at:', claudePath, 'forceNew:', forceNew);
+  const { id: sessionId } = pty.spawnClaude(projectPath, claudePath, { continueSession: !forceNew });
   console.log('[open-session] new sessionId:', sessionId);
 
   const win = terminalWindow.createTerminalWindow({
@@ -372,11 +372,15 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
         if (now - lastTime > BELL_DEBOUNCE_MS) {
           lastBellTime[sessionId] = now;
           const iconPath = path.join(app.getAppPath(), 'assets/icon.png');
-          new Notification({
+          const notification = new Notification({
             title: 'Cockpit',
             body: `${projectName} needs attention`,
             icon: iconPath,
-          }).show();
+          });
+          notification.on('click', () => {
+            terminalWindow.focusTerminalWindow(sessionId);
+          });
+          notification.show();
         }
       }
     }
