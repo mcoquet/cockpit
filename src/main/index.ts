@@ -47,6 +47,10 @@ function createPopupWindow(): BrowserWindow {
     win.hide();
   });
 
+  win.on('closed', () => {
+    popupWindow = null;
+  });
+
   if (process.env.NODE_ENV === 'development') {
     win.loadURL('http://localhost:5173');
   } else {
@@ -68,7 +72,7 @@ function updateTrayIcon(): void {
 }
 
 function showPopupWindow(): void {
-  if (!popupWindow) {
+  if (!popupWindow || popupWindow.isDestroyed()) {
     popupWindow = createPopupWindow();
   }
 
@@ -199,7 +203,7 @@ function updateDockVisibility(): void {
 }
 
 function notifySessionsChanged(): void {
-  if (popupWindow) {
+  if (popupWindow && !popupWindow.isDestroyed()) {
     popupWindow.webContents.send('sessions-changed', activeSessions);
   }
   updateTrayIcon();
@@ -377,6 +381,26 @@ function openNewSessionInCurrentProject(): void {
   openSessionForProject(projectPath, true);
 }
 
+async function restorePreviousSession(): Promise<void> {
+  const previousPaths = store.getPreviousSession();
+  if (previousPaths.length === 0) {
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'No Previous Session',
+      message: 'There is no previous session to restore.',
+    });
+    return;
+  }
+
+  console.log('[restore-session] Restoring', previousPaths.length, 'sessions');
+  for (const projectPath of previousPaths) {
+    await openSessionForProject(projectPath, false);
+  }
+
+  // Clear after restoring so we don't restore the same session twice
+  store.clearPreviousSession();
+}
+
 async function openSessionForProject(projectPath: string, forceNew: boolean): Promise<void> {
   const existing = activeSessions[projectPath];
   console.log('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
@@ -491,6 +515,12 @@ function createAppMenu(): void {
           label: 'New Session in Project',
           accelerator: 'CommandOrControl+N',
           click: () => openNewSessionInCurrentProject(),
+        },
+        { type: 'separator' },
+        {
+          label: 'Restore Previous Session',
+          accelerator: 'CommandOrControl+Shift+T',
+          click: () => restorePreviousSession(),
         },
       ],
     },
@@ -623,6 +653,11 @@ app.on('before-quit', async (event) => {
   });
 
   if (response === 1) {
+    // Save active sessions for potential restore
+    const sessionPaths = Object.keys(activeSessions);
+    store.savePreviousSession(sessionPaths);
+    console.log('[quit] Saved', sessionPaths.length, 'sessions for restore');
+
     isQuitting = true;
     app.quit();
   }

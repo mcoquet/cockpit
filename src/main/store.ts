@@ -10,12 +10,14 @@ const Store = ElectronStore.default || ElectronStore;
 
 interface StoreSchema {
   projects: Project[];
+  previousSession: string[];
 }
 
 const store = new Store({
   name: 'projects',
   defaults: {
     projects: [] as Project[],
+    previousSession: [] as string[],
   },
 }) as {
   get: <K extends keyof StoreSchema>(key: K) => StoreSchema[K];
@@ -94,4 +96,16 @@ export function removeProject(projectPath: string): void {
     'projects',
     projects.filter((p) => p.path !== projectPath)
   );
+}
+
+export function savePreviousSession(projectPaths: string[]): void {
+  store.set('previousSession', projectPaths);
+}
+
+export function getPreviousSession(): string[] {
+  return store.get('previousSession');
+}
+
+export function clearPreviousSession(): void {
+  store.set('previousSession', []);
 }
