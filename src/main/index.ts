@@ -13,6 +13,9 @@ let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 
+// Use omega (Ω) in dev mode, lambda (λ) in production
+const TRAY_SYMBOL = process.env.NODE_ENV === 'development' ? 'Ω' : 'λ';
+
 // Track active sessions in memory
 const activeSessions: Record<string, ActiveSession> = {};
 
@@ -55,7 +58,7 @@ function updateTrayTitle(): void {
   if (!tray) return;
   const hasActive = Object.keys(activeSessions).length > 0;
   // Show bullet indicator when sessions are active
-  tray.setTitle(hasActive ? '● λ' : 'λ');
+  tray.setTitle(hasActive ? `● ${TRAY_SYMBOL}` : TRAY_SYMBOL);
 }
 
 function updateTrayIcon(): void {
@@ -87,7 +90,7 @@ function createTray(): void {
   // Use empty icon - macOS will show just the title text
   const emptyIcon = nativeImage.createEmpty();
   tray = new Tray(emptyIcon);
-  tray.setTitle('λ');
+  tray.setTitle(TRAY_SYMBOL);
   tray.setToolTip('Cockpit');
 
   tray.on('click', () => {
