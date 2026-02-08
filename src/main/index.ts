@@ -607,6 +607,18 @@ function createAppMenu(): void {
   Menu.setApplicationMenu(menu);
 }
 
+// Enforce single instance - show popup if already running
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Someone tried to open a second instance, show our popup
+    showPopupWindow();
+  });
+}
+
 app.whenReady().then(() => {
   // Set dock icon for dev mode (packaged app uses icon from bundle)
   if (process.platform === 'darwin' && app.dock) {
