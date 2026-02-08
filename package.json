@@ -1,6 +1,6 @@
 {
   "name": "cockpit",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Claude Code project manager for macOS",
   "main": "dist/main/main/index.js",
   "scripts": {
@@ -15,7 +15,11 @@
     "start": "electron .",
     "package": "npm run build && electron-builder"
   },
-  "keywords": ["electron", "claude", "menubar"],
+  "keywords": [
+    "electron",
+    "claude",
+    "menubar"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
