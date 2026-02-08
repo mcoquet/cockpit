@@ -34,11 +34,25 @@ body {
   background: #1e1e1e;
 }
 
-.terminal-container {
+.terminal-wrapper {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
-  padding: 4px;
   padding-top: 38px;
+  background: #1e1e1e;
+}
+
+.terminal-container {
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+  background: #1e1e1e;
+}
+
+.terminal-spacer {
+  height: 16px;
+  flex-shrink: 0;
   background: #1e1e1e;
 }
 

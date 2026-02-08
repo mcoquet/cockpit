@@ -96,7 +96,10 @@ export default function Terminal() {
   return (
     <>
       <div className="drag-region">{title}</div>
-      <div ref={containerRef} className="terminal-container" />
+      <div className="terminal-wrapper">
+        <div ref={containerRef} className="terminal-container" />
+        <div className="terminal-spacer" />
+      </div>
     </>
   );
 }
