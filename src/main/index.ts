@@ -6,12 +6,14 @@ import * as pty from './pty';
 import * as terminalWindow from './terminal-window';
 import { requestPermission } from './permissions';
 import * as settings from './settings';
+import { getClaudeStats } from './claude-stats';
 import type { AppSettings } from '../shared/types';
-import type { Project, ActiveSession } from '../shared/types';
+import type { Project, ActiveSession, ServiceStatus } from '../shared/types';
 
 let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
+let statusWindow: BrowserWindow | null = null;
 
 // Use omega (Ω) in dev mode, lambda (λ) in production
 const TRAY_SYMBOL = process.env.NODE_ENV === 'development' ? 'Ω' : 'λ';
@@ -93,8 +95,13 @@ function createTray(): void {
   tray.setTitle(TRAY_SYMBOL);
   tray.setToolTip('Cockpit');
 
-  tray.on('click', () => {
-    showPopupWindow();
+  tray.on('click', (event) => {
+    // Shift+Cmd+click shows status window
+    if (event.metaKey && event.shiftKey) {
+      showStatusWindow();
+    } else {
+      showPopupWindow();
+    }
   });
 }
 
@@ -137,6 +144,47 @@ function showSettingsWindow(): void {
     return;
   }
   settingsWindow = createSettingsWindow();
+}
+
+function createStatusWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 420,
+    height: 320,
+    title: 'Claude Status',
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    vibrancy: 'under-window',
+    visualEffectState: 'active',
+    transparent: true,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 12 },
+    webPreferences: {
+      preload: path.join(__dirname, '../preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  if (process.env.NODE_ENV === 'development') {
+    win.loadURL('http://localhost:5173/status.html');
+  } else {
+    win.loadFile(path.join(__dirname, '../../renderer/status.html'));
+  }
+
+  win.on('closed', () => {
+    statusWindow = null;
+  });
+
+  return win;
+}
+
+function showStatusWindow(): void {
+  if (statusWindow && !statusWindow.isDestroyed()) {
+    statusWindow.focus();
+    return;
+  }
+  statusWindow = createStatusWindow();
 }
 
 function updateDockVisibility(): void {
@@ -240,6 +288,27 @@ function registerIpcHandlers(): void {
     }
 
     await openSessionForProject(projectPath, forceNew ?? false);
+  });
+
+  ipcMain.handle('get-claude-stats', () => getClaudeStats());
+
+  ipcMain.handle('get-service-status', async (): Promise<ServiceStatus> => {
+    try {
+      const response = await fetch('https://status.anthropic.com/api/v2/status.json');
+      const data = await response.json();
+      const indicator = data.status?.indicator || 'unknown';
+      const description = data.status?.description || '';
+
+      let status: ServiceStatus['status'] = 'unknown';
+      if (indicator === 'none') status = 'operational';
+      else if (indicator === 'minor' || indicator === 'major') status = 'degraded';
+      else if (indicator === 'critical') status = 'outage';
+
+      return { status, message: description };
+    } catch (err) {
+      console.error('[service-status] Failed to fetch:', err);
+      return { status: 'unknown', message: 'Could not fetch status' };
+    }
   });
 
   // Terminal IPC handlers

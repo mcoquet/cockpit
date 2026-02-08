@@ -17,6 +17,33 @@ export interface AppSettings {
   launchAtLogin: boolean;
 }
 
+export interface DailyActivity {
+  date: string;
+  messageCount: number;
+  sessionCount: number;
+  toolCallCount: number;
+}
+
+export interface ClaudeStats {
+  today: DailyActivity | null;
+  last7Days: {
+    messageCount: number;
+    sessionCount: number;
+    toolCallCount: number;
+  };
+  last30Days: {
+    messageCount: number;
+    sessionCount: number;
+    toolCallCount: number;
+  };
+  lastComputedDate: string | null;
+}
+
+export interface ServiceStatus {
+  status: 'operational' | 'degraded' | 'outage' | 'unknown';
+  message: string;
+}
+
 export interface CockpitAPI {
   getProjects: () => Promise<Project[]>;
   addProject: (path: string) => Promise<Project>;
@@ -32,6 +59,8 @@ export interface CockpitAPI {
   getCreateLocation: () => Promise<string>;
   setCreateLocation: (path: string) => Promise<void>;
   createProject: (name: string, location: string) => Promise<boolean>;
+  getClaudeStats?: () => Promise<ClaudeStats>;
+  getServiceStatus?: () => Promise<ServiceStatus>;
 }
 
 export interface TerminalAPI {

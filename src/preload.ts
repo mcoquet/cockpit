@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, ActiveSession, AppSettings, CockpitAPI, TerminalAPI } from './shared/types';
+import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI } from './shared/types';
 
 const cockpitApi: CockpitAPI = {
   getProjects: () => ipcRenderer.invoke('get-projects'),
@@ -22,6 +22,8 @@ const cockpitApi: CockpitAPI = {
   getCreateLocation: () => ipcRenderer.invoke('get-create-location'),
   setCreateLocation: (path: string) => ipcRenderer.invoke('set-create-location', path),
   createProject: (name: string, location: string) => ipcRenderer.invoke('create-project', name, location),
+  getClaudeStats: () => ipcRenderer.invoke('get-claude-stats'),
+  getServiceStatus: () => ipcRenderer.invoke('get-service-status'),
 };
 
 const terminalApi: TerminalAPI = {
