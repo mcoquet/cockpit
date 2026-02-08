@@ -1,11 +1,11 @@
 {
   "name": "cockpit",
-  "version": "1.0.0",
+  "version": "0.6.0",
   "description": "Claude Code project manager for macOS",
   "main": "dist/main/main/index.js",
   "scripts": {
     "rebuild": "electron-rebuild -f -w node-pty",
-    "postinstall": "electron-rebuild -f -w node-pty",
+    "postinstall": "git config core.hooksPath .githooks && electron-rebuild -f -w node-pty",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
     "build": "npm run build:main && npm run build:renderer",

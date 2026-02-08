@@ -76,8 +76,18 @@ This is an Electron app with the standard three-process architecture:
 
 ## Releases
 
+### Creating a Release
+
+```bash
+git tag v0.7.0 && git push origin main v0.7.0
+```
+
+The pre-push hook (`.githooks/pre-push`) automatically syncs `package.json` version when pushing a version tag. If the version doesn't match, it updates package.json, commits, and moves the tag.
+
+### What Happens on Tag Push
+
 GitHub Actions workflow (`.github/workflows/release.yml`) builds on tag push:
-- Triggers on `v*` tags (e.g., `git tag v1.0.0 && git push origin v1.0.0`)
+- Triggers on `v*` tags
 - Builds DMG for arm64 and x64
 - Uploads to GitHub Releases (unsigned - users right-click → Open)
 - **Automatically updates Homebrew cask** in `mcoquet/homebrew-cockpit` repo:

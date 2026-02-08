@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# Pre-push hook: Auto-sync package.json version when pushing a version tag
+#
+# When you push a tag like v0.7.0, this hook:
+# 1. Checks if package.json version matches
+# 2. If not, updates package.json, commits, and moves the tag
+#
+
+while read local_ref local_sha remote_ref remote_sha; do
+  # Check if this is a version tag (refs/tags/v*)
+  if [[ "$local_ref" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+    VERSION="${BASH_REMATCH[1]}"
+    TAG_NAME="${local_ref#refs/tags/}"
+
+    # Get current package.json version
+    CURRENT_VERSION=$(node -p "require('./package.json').version")
+
+    if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
+      echo "📦 Syncing package.json version: $CURRENT_VERSION → $VERSION"
+
+      # Update package.json
+      npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      # Commit the change
+      git add package.json
+      git commit -m "chore: bump version to $VERSION"
+
+      # Move the tag to the new commit
+      git tag -f "$TAG_NAME"
+
+      echo "✓ Updated package.json and moved tag to new commit"
+      echo "  Note: Local tag has been updated. Push will include the version bump."
+    fi
+  fi
+done
+
+exit 0
