@@ -96,6 +96,18 @@ GitHub Actions workflow (`.github/workflows/release.yml`) builds on tag push:
   - Requires `HOMEBREW_TAP_TOKEN` secret with repo access
   - Skips prereleases (tags containing `-`, e.g., `v1.0.0-beta`)
 
+### Verifying a Release
+
+After pushing a tag, verify both the build AND cask update before telling the user to upgrade:
+
+```bash
+# 1. Check build completed
+gh run list --repo mcoquet/cockpit --limit 1
+
+# 2. Check cask was updated (force refresh)
+brew update && brew info cockpit | head -1
+```
+
 ## Workflow Rules
 
 1. **Ticket first** - Never start work without an existing issue in beads (`bd show <id>`)
