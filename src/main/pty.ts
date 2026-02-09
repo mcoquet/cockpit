@@ -42,6 +42,11 @@ export function spawnClaude(
   // Use --continue flag by default to resume previous session
   const args = options?.continueSession !== false ? ['--continue'] : [];
 
+  // Add claude's directory to PATH so node can be found (claude uses #!/usr/bin/env node)
+  const claudeDir = path.dirname(claudePath);
+  const envPath = process.env.PATH || '/usr/bin:/bin';
+  const extendedPath = `${claudeDir}:${envPath}`;
+
   // Spawn claude directly so PTY exits when claude exits
   const ptyProcess: IPty = pty.spawn(claudePath, args, {
     name: 'xterm-256color',
@@ -51,6 +56,7 @@ export function spawnClaude(
     env: {
       ...process.env,
       TERM: 'xterm-256color',
+      PATH: extendedPath,
     },
   });
 
