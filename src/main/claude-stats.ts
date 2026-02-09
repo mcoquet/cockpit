@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import log from 'electron-log';
 
 interface DailyActivity {
   date: string;
@@ -84,7 +85,7 @@ export function getClaudeStats(): ClaudeStats {
       lastComputedDate: cache.lastComputedDate,
     };
   } catch (err) {
-    console.error('[claude-stats] Failed to read stats:', err);
+    log.error('[claude-stats] Failed to read stats:', err);
     return emptyStats;
   }
 }

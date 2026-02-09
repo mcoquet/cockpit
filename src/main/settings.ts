@@ -1,4 +1,5 @@
 import { app, globalShortcut } from 'electron';
+import log from 'electron-log';
 import type { AppSettings } from '../shared/types';
 
 // Use require for electron-store due to ESM/CJS compatibility
@@ -88,10 +89,10 @@ export function updateGlobalShortcut(shortcut: string): void {
       if (registered) {
         currentShortcut = accelerator;
       } else {
-        console.warn(`[settings] Failed to register global shortcut: ${accelerator}`);
+        log.warn(`[settings] Failed to register global shortcut: ${accelerator}`);
       }
     } catch (err) {
-      console.warn(`[settings] Error registering global shortcut: ${err}`);
+      log.warn(`[settings] Error registering global shortcut: ${err}`);
     }
   }
 }

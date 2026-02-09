@@ -1,4 +1,5 @@
 import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification, Menu } from 'electron';
+import log from 'electron-log';
 import path from 'path';
 import * as store from './store';
 import { findClaudeBinary } from './claude';
@@ -277,7 +278,7 @@ function registerIpcHandlers(): void {
       await openSessionForProject(project.path, false);
       return true;
     } catch (err) {
-      console.error('[create-project] Failed to create project:', err);
+      log.error('[create-project] Failed to create project:', err);
       dialog.showErrorBox('Failed to create project', `Could not create folder: ${projectPath}`);
       return false;
     }
@@ -310,7 +311,7 @@ function registerIpcHandlers(): void {
 
       return { status, message: description };
     } catch (err) {
-      console.error('[service-status] Failed to fetch:', err);
+      log.error('[service-status] Failed to fetch:', err);
       return { status: 'unknown', message: 'Could not fetch status' };
     }
   });
@@ -350,7 +351,7 @@ function registerGlobalShortcuts(): void {
   });
 
   if (!registeredBacktick) {
-    console.warn('[shortcuts] Failed to register Cmd+` shortcut');
+    log.warn('[shortcuts] Failed to register Cmd+` shortcut');
   }
 }
 
@@ -392,7 +393,7 @@ async function restorePreviousSession(): Promise<void> {
     return;
   }
 
-  console.log('[restore-session] Restoring', previousPaths.length, 'sessions');
+  log.info('[restore-session] Restoring', previousPaths.length, 'sessions');
   for (const projectPath of previousPaths) {
     await openSessionForProject(projectPath, false);
   }
@@ -403,17 +404,17 @@ async function restorePreviousSession(): Promise<void> {
 
 async function openSessionForProject(projectPath: string, forceNew: boolean): Promise<void> {
   const existing = activeSessions[projectPath];
-  console.log('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
+  log.info('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
 
   if (existing && !forceNew) {
     const exists = pty.sessionExists(existing.sessionId);
-    console.log('[open-session] sessionExists:', exists);
+    log.info('[open-session] sessionExists:', exists);
     if (exists) {
       const focused = terminalWindow.focusTerminalWindow(existing.sessionId);
-      console.log('[open-session] focusTerminalWindow result:', focused);
+      log.info('[open-session] focusTerminalWindow result:', focused);
       return;
     }
-    console.log('[open-session] session gone, removing');
+    log.info('[open-session] session gone, removing');
     delete activeSessions[projectPath];
   }
 
@@ -430,9 +431,9 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
   const project = projects.find((p) => p.path === projectPath);
   const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
 
-  console.log('[open-session] creating new session with claude at:', claudePath, 'forceNew:', forceNew);
+  log.info('[open-session] creating new session with claude at:', claudePath, 'forceNew:', forceNew);
   const { id: sessionId } = pty.spawnClaude(projectPath, claudePath, { continueSession: !forceNew });
-  console.log('[open-session] new sessionId:', sessionId);
+  log.info('[open-session] new sessionId:', sessionId);
 
   const win = terminalWindow.createTerminalWindow({
     sessionId,
@@ -441,7 +442,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
     hasGit: project?.hasGit,
     hasGithub: project?.hasGithub,
     onClose: () => {
-      console.log('[terminal-window] closed, cleaning up session:', sessionId);
+      log.info('[terminal-window] closed, cleaning up session:', sessionId);
       pty.killSession(sessionId);
       // Only delete if this is the session for this project
       if (activeSessions[projectPath]?.sessionId === sessionId) {
@@ -483,7 +484,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
   });
 
   pty.onSessionExit(sessionId, () => {
-    console.log('[pty-exit] session exited:', sessionId);
+    log.info('[pty-exit] session exited:', sessionId);
     terminalWindow.closeTerminalWindow(sessionId);
   });
 }
@@ -668,7 +669,7 @@ app.on('before-quit', async (event) => {
     // Save active sessions for potential restore
     const sessionPaths = Object.keys(activeSessions);
     store.savePreviousSession(sessionPaths);
-    console.log('[quit] Saved', sessionPaths.length, 'sessions for restore');
+    log.info('[quit] Saved', sessionPaths.length, 'sessions for restore');
 
     isQuitting = true;
     app.quit();
