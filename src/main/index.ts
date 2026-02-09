@@ -1,5 +1,6 @@
 import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification, Menu } from 'electron';
 import log from 'electron-log';
+import fs from 'fs';
 import path from 'path';
 import * as store from './store';
 import { findClaudeBinary } from './claude';
@@ -620,6 +621,48 @@ if (!gotTheLock) {
   });
 }
 
+// Watch for app bundle updates (production only)
+function watchForUpgrade(): void {
+  if (process.env.NODE_ENV === 'development') return;
+
+  const appPath = '/Applications/Cockpit.app';
+  const plistPath = path.join(appPath, 'Contents/Info.plist');
+  let debounceTimer: NodeJS.Timeout | null = null;
+
+  try {
+    fs.watch(appPath, { recursive: false }, (eventType) => {
+      if (eventType !== 'rename') return;
+
+      // Debounce: wait for upgrade to complete
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        try {
+          // Check if the plist exists (app bundle is complete)
+          if (!fs.existsSync(plistPath)) return;
+
+          // Save active sessions for auto-restore after upgrade
+          const sessionPaths = Object.keys(activeSessions);
+          if (sessionPaths.length > 0) {
+            store.savePreviousSession(sessionPaths);
+            store.setUpgradeRestart(true);
+            log.info('[upgrade] Saved', sessionPaths.length, 'sessions for restore');
+          }
+
+          log.info('[upgrade] App bundle changed, restarting...');
+          app.relaunch();
+          app.exit(0);
+        } catch (err) {
+          log.error('[upgrade] Error checking for upgrade:', err);
+        }
+      }, 2000); // Wait 2s for upgrade to complete
+    });
+
+    log.info('[upgrade] Watching for app updates at:', appPath);
+  } catch (err) {
+    log.warn('[upgrade] Could not watch for upgrades:', err);
+  }
+}
+
 app.whenReady().then(() => {
   // Set dock icon for dev mode (packaged app uses icon from bundle)
   if (process.platform === 'darwin' && app.dock) {
@@ -635,6 +678,24 @@ app.whenReady().then(() => {
 
   // Initialize settings and register global shortcut for popup
   settings.initializeSettings(() => showPopupWindow());
+
+  // Watch for Homebrew upgrades
+  watchForUpgrade();
+
+  // Auto-restore sessions after upgrade restart
+  if (store.getUpgradeRestart()) {
+    store.setUpgradeRestart(false);
+    const previousPaths = store.getPreviousSession();
+    if (previousPaths.length > 0) {
+      log.info('[upgrade] Auto-restoring', previousPaths.length, 'sessions after upgrade');
+      (async () => {
+        for (const projectPath of previousPaths) {
+          await openSessionForProject(projectPath, false);
+        }
+        store.clearPreviousSession();
+      })();
+    }
+  }
 });
 
 app.on('will-quit', () => {

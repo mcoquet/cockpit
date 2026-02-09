@@ -11,6 +11,7 @@ const Store = ElectronStore.default || ElectronStore;
 interface StoreSchema {
   projects: Project[];
   previousSession: string[];
+  upgradeRestart: boolean;
 }
 
 const store = new Store({
@@ -18,6 +19,7 @@ const store = new Store({
   defaults: {
     projects: [] as Project[],
     previousSession: [] as string[],
+    upgradeRestart: false,
   },
 }) as {
   get: <K extends keyof StoreSchema>(key: K) => StoreSchema[K];
@@ -108,4 +110,12 @@ export function getPreviousSession(): string[] {
 
 export function clearPreviousSession(): void {
   store.set('previousSession', []);
+}
+
+export function setUpgradeRestart(value: boolean): void {
+  store.set('upgradeRestart', value);
+}
+
+export function getUpgradeRestart(): boolean {
+  return store.get('upgradeRestart') || false;
 }
