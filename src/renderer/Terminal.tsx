@@ -59,8 +59,17 @@ export default function Terminal() {
     });
 
     // Receive output from PTY
+    // Track if we should scroll to bottom (for session restore)
+    let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
     window.terminal.onOutput((data) => {
       terminal.write(data);
+
+      // Debounced scroll to bottom - handles bulk output during session restore
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        terminal.scrollToBottom();
+        terminal.focus();
+      }, 50);
     });
 
     // Handle window resize
@@ -85,6 +94,7 @@ export default function Terminal() {
     window.addEventListener('focus', handleFocus);
 
     return () => {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('focus', handleFocus);
       terminal.dispose();

@@ -484,8 +484,23 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
     }
   });
 
-  pty.onSessionExit(sessionId, () => {
+  pty.onSessionExit(sessionId, (exitInfo) => {
     log.info('[pty-exit] session exited:', sessionId);
+    const sessionDuration = Date.now() - exitInfo.startTime;
+
+    // If session failed quickly with exit code 1 and we used --continue, retry without it
+    if (exitInfo.exitCode === 1 && sessionDuration < 3000 && !forceNew) {
+      log.info('[pty-exit] quick failure with --continue, retrying without it');
+      terminalWindow.closeTerminalWindow(sessionId);
+      // Clean up and retry
+      if (activeSessions[projectPath]?.sessionId === sessionId) {
+        delete activeSessions[projectPath];
+      }
+      notifySessionsChanged();
+      openSessionForProject(projectPath, true); // force new session
+      return;
+    }
+
     terminalWindow.closeTerminalWindow(sessionId);
   });
 }

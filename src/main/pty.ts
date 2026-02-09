@@ -1,6 +1,7 @@
 import os from 'os';
 import path from 'path';
 import type { IPty } from 'node-pty';
+import log from 'electron-log';
 
 // node-pty is a native module that needs require()
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -21,7 +22,14 @@ function generateSessionId(): string {
   return `session-${Date.now()}-${++sessionCounter}`;
 }
 
-const exitListeners = new Map<string, (() => void)[]>();
+interface ExitInfo {
+  exitCode: number;
+  signal: number | undefined;
+  startTime: number;
+}
+
+const exitListeners = new Map<string, ((info: ExitInfo) => void)[]>();
+const sessionStartTimes = new Map<string, number>();
 
 export function spawnClaude(
   projectPath: string,
@@ -47,6 +55,7 @@ export function spawnClaude(
   });
 
   sessions.set(id, { id, process: ptyProcess, projectPath });
+  sessionStartTimes.set(id, Date.now());
 
   // Set up data listener to relay output
   ptyProcess.onData((data: string) => {
@@ -56,14 +65,17 @@ export function spawnClaude(
     }
   });
 
-  ptyProcess.onExit(() => {
+  ptyProcess.onExit(({ exitCode, signal }) => {
+    const startTime = sessionStartTimes.get(id) || Date.now();
+    log.info(`[pty-exit] session ${id} exited with code ${exitCode}, signal ${signal}`);
     const exitCbs = exitListeners.get(id) || [];
     for (const cb of exitCbs) {
-      cb();
+      cb({ exitCode, signal, startTime });
     }
     sessions.delete(id);
     outputListeners.delete(id);
     exitListeners.delete(id);
+    sessionStartTimes.delete(id);
   });
 
   return { id, process: ptyProcess };
@@ -78,11 +90,13 @@ export function onSessionOutput(
   outputListeners.set(id, listeners);
 }
 
-export function onSessionExit(id: string, callback: () => void): void {
+export function onSessionExit(id: string, callback: (info: ExitInfo) => void): void {
   const listeners = exitListeners.get(id) || [];
   listeners.push(callback);
   exitListeners.set(id, listeners);
 }
+
+export type { ExitInfo };
 
 export function writeToSession(id: string, data: string): void {
   const session = sessions.get(id);
