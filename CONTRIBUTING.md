@@ -49,6 +49,10 @@ This is an Electron app with the standard three-process model:
 - **Preload** (`src/preload.ts`) - Bridge exposing `window.cockpit` API to renderer
 - **Renderer** (`src/renderer/`) - React UI built with Vite
 
+## Debugging
+
+Production logs: `~/Library/Logs/Cockpit/main.log`
+
 ## Requirements
 
 - Node.js 18+
