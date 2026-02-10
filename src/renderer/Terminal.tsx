@@ -60,17 +60,27 @@ export default function Terminal() {
     });
 
     // Receive output from PTY
-    // Track if we should scroll to bottom (for session restore)
-    let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+    // Track if user has scrolled up (to allow reading scrollback without being pulled down)
+    let userScrolledUp = false;
+
+    // Detect when user scrolls up manually
+    terminal.onScroll(() => {
+      const buffer = terminal.buffer.active;
+      // User is scrolled up if viewportY is less than baseY
+      userScrolledUp = buffer.viewportY < buffer.baseY;
+    });
+
     window.terminal.onOutput((data) => {
+      // Check scroll position BEFORE writing (writing changes baseY)
+      const buffer = terminal.buffer.active;
+      const wasAtBottom = buffer.viewportY >= buffer.baseY;
+
       terminal.write(data);
 
-      // Debounced scroll to bottom - handles bulk output during session restore
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
+      // Only auto-scroll if user was at the bottom before new output
+      if (wasAtBottom && !userScrolledUp) {
         terminal.scrollToBottom();
-        terminal.focus();
-      }, 50);
+      }
     });
 
     // Handle window resize
@@ -100,8 +110,46 @@ export default function Terminal() {
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
 
+    // Register link provider for file paths (alt+click to open, shows pointer cursor)
+    const pathPattern = /(?:~|\.\.?)?(?:\/[\w._-]+)+\/?/;
+    terminal.registerLinkProvider({
+      provideLinks: (bufferLineNumber, callback) => {
+        const line = terminal.buffer.active.getLine(bufferLineNumber - 1);
+        if (!line) {
+          callback(undefined);
+          return;
+        }
+
+        const lineText = line.translateToString();
+        const links: { text: string; range: { start: { x: number; y: number }; end: { x: number; y: number } } }[] = [];
+
+        // Find all path matches in the line
+        const globalPattern = new RegExp(pathPattern.source, 'g');
+        let match;
+        while ((match = globalPattern.exec(lineText)) !== null) {
+          links.push({
+            text: match[0],
+            range: {
+              start: { x: match.index + 1, y: bufferLineNumber },
+              end: { x: match.index + match[0].length + 1, y: bufferLineNumber },
+            },
+          });
+        }
+
+        callback(links.length > 0 ? links.map(link => ({
+          range: link.range,
+          text: link.text,
+          activate: (e: MouseEvent, text: string) => {
+            // Only open on alt+click
+            if (e.altKey) {
+              window.terminal.openPath(text);
+            }
+          },
+        })) : undefined);
+      },
+    });
+
     return () => {
-      if (scrollTimeout) clearTimeout(scrollTimeout);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);

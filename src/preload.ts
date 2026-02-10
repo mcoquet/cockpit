@@ -42,6 +42,9 @@ const terminalApi: TerminalAPI = {
   resize: (cols: number, rows: number) => {
     ipcRenderer.send('pty-resize', cols, rows);
   },
+  openPath: (path: string) => {
+    ipcRenderer.send('open-path', path);
+  },
 };
 
 contextBridge.exposeInMainWorld('cockpit', cockpitApi);

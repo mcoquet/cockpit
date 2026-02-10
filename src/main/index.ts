@@ -1,4 +1,4 @@
-import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification, Menu } from 'electron';
+import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification, Menu, shell } from 'electron';
 import log from 'electron-log';
 import fs from 'fs';
 import path from 'path';
@@ -402,6 +402,21 @@ function registerIpcHandlers(): void {
         pty.resizeSession(session.sessionId, cols, rows);
         break;
       }
+    }
+  });
+
+  // Open file/folder path with OS default handler (alt+click in terminal)
+  ipcMain.on('open-path', (_event, filePath: string) => {
+    // Expand ~ to home directory
+    const expandedPath = filePath.startsWith('~')
+      ? path.join(app.getPath('home'), filePath.slice(1))
+      : filePath;
+
+    // Check if path exists before opening
+    if (fs.existsSync(expandedPath)) {
+      shell.openPath(expandedPath);
+    } else {
+      log.warn('[open-path] Path does not exist:', expandedPath);
     }
   });
 }

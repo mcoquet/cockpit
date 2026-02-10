@@ -68,6 +68,7 @@ export interface TerminalAPI {
   sendInput: (data: string) => void;
   onOutput: (callback: (data: string) => void) => void;
   resize: (cols: number, rows: number) => void;
+  openPath: (path: string) => void;
 }
 
 declare global {
