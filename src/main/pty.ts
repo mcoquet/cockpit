@@ -1,11 +1,64 @@
 import os from 'os';
 import path from 'path';
+import { execFileSync } from 'child_process';
 import type { IPty } from 'node-pty';
 import log from 'electron-log';
 
 // node-pty is a native module that needs require()
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pty = require('node-pty');
+
+// Standard macOS paths that should always be included
+const STANDARD_PATHS = [
+  '/opt/homebrew/bin',
+  '/opt/homebrew/sbin',
+  '/usr/local/bin',
+  '/usr/local/sbin',
+  '/usr/bin',
+  '/bin',
+  '/usr/sbin',
+  '/sbin',
+];
+
+// Cache the user's shell PATH (fetched once at startup)
+let cachedUserPath: string | null = null;
+
+/**
+ * Get the user's full PATH by spawning a login shell.
+ * This captures paths added in .zshrc, .bash_profile, etc.
+ */
+function getUserShellPath(): string {
+  if (cachedUserPath !== null) {
+    return cachedUserPath;
+  }
+
+  const shell = process.env.SHELL || '/bin/zsh';
+
+  try {
+    // Spawn a login shell to get the full PATH
+    // Using execFileSync with -l (login) and -c (command) flags
+    const result = execFileSync(shell, ['-l', '-c', 'echo $PATH'], {
+      encoding: 'utf8',
+      timeout: 5000,
+      env: { HOME: os.homedir(), USER: os.userInfo().username },
+    }).trim();
+
+    if (result) {
+      log.info('[pty] Got user shell PATH from login shell');
+      log.info('[pty] PATH includes /usr/local/bin:', result.includes('/usr/local/bin'));
+      log.info('[pty] PATH includes /opt/homebrew/bin:', result.includes('/opt/homebrew/bin'));
+      cachedUserPath = result;
+      return result;
+    }
+  } catch (err) {
+    log.warn('[pty] Failed to get user shell PATH:', err);
+  }
+
+  // Fallback to standard paths
+  cachedUserPath = STANDARD_PATHS.join(':');
+  log.info('[pty] Using fallback PATH:', cachedUserPath);
+  return cachedUserPath;
+}
 
 interface PtySession {
   id: string;
@@ -42,10 +95,10 @@ export function spawnClaude(
   // Use --continue flag by default to resume previous session
   const args = options?.continueSession !== false ? ['--continue'] : [];
 
-  // Add claude's directory to PATH so node can be found (claude uses #!/usr/bin/env node)
+  // Get user's full PATH (from login shell) and prepend claude's directory
   const claudeDir = path.dirname(claudePath);
-  const envPath = process.env.PATH || '/usr/bin:/bin';
-  const extendedPath = `${claudeDir}:${envPath}`;
+  const userPath = getUserShellPath();
+  const extendedPath = `${claudeDir}:${userPath}`;
 
   // Spawn claude directly so PTY exits when claude exits
   const ptyProcess: IPty = pty.spawn(claudePath, args, {
