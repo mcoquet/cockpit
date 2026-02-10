@@ -219,13 +219,74 @@ function registerIpcHandlers(): void {
     store.addProject(projectPath)
   );
 
-  ipcMain.handle('update-project', (_event, projectPath: string, updates: Partial<Project>) =>
-    store.updateProject(projectPath, updates)
-  );
+  ipcMain.handle('update-project', (_event, projectPath: string, updates: Partial<Project>) => {
+    const updatedProject = store.updateProject(projectPath, updates);
 
-  ipcMain.handle('remove-project', (_event, projectPath: string) =>
-    store.removeProject(projectPath)
-  );
+    // Update terminal window title if this project has an active session
+    const session = activeSessions[projectPath];
+    if (session) {
+      const projectName = updatedProject.name || projectPath.split('/').pop() || 'Terminal';
+      terminalWindow.updateTerminalWindowTitle(session.sessionId, projectName, {
+        hasBeads: updatedProject.hasBeads,
+        hasGit: updatedProject.hasGit,
+        hasGithub: updatedProject.hasGithub,
+      });
+    }
+
+    return updatedProject;
+  });
+
+  ipcMain.handle('remove-project', async (_event, projectPath: string) => {
+    // Expand ~ to home directory for display and deletion
+    const expandedPath = projectPath.startsWith('~')
+      ? path.join(app.getPath('home'), projectPath.slice(1))
+      : projectPath;
+
+    // Check if folder exists
+    const folderExists = fs.existsSync(expandedPath);
+
+    if (folderExists) {
+      // Ask user if they want to delete the folder too
+      const { response } = await dialog.showMessageBox({
+        type: 'question',
+        buttons: ['Remove from Cockpit', 'Delete Folder', 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        title: 'Remove Project',
+        message: 'How would you like to remove this project?',
+        detail: `Project: ${projectPath}`,
+      });
+
+      if (response === 2) {
+        // User cancelled
+        return;
+      }
+
+      if (response === 1) {
+        // User wants to delete the folder - show confirmation
+        const { response: confirmResponse } = await dialog.showMessageBox({
+          type: 'warning',
+          buttons: ['Cancel', 'Delete Permanently'],
+          defaultId: 0,
+          cancelId: 0,
+          title: 'Delete Folder?',
+          message: 'This action cannot be undone.',
+          detail: `This will permanently delete:\n${expandedPath}\n\nand all its contents.`,
+        });
+
+        if (confirmResponse === 1) {
+          try {
+            fs.rmSync(expandedPath, { recursive: true, force: true });
+          } catch (err) {
+            dialog.showErrorBox('Failed to delete folder', `${err}`);
+          }
+        }
+      }
+    }
+
+    // Always remove from store (unless cancelled above)
+    store.removeProject(projectPath);
+  });
 
   ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog({

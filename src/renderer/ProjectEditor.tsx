@@ -4,7 +4,7 @@ import type { Project } from '../shared/types';
 interface Props {
   project: Project;
   onSave: (updates: Partial<Project>) => void;
-  onRemove: () => void;
+  onRemove: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -18,11 +18,10 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
     onClose();
   }
 
-  function handleRemove() {
-    if (confirm('Remove this project from Cockpit?')) {
-      onRemove();
-      onClose();
-    }
+  async function handleRemove() {
+    // Main process shows dialog with folder deletion option
+    await onRemove();
+    onClose();
   }
 
   return (

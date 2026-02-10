@@ -104,6 +104,20 @@ export function closeTerminalWindow(sessionId: string): void {
   }
 }
 
+export function updateTerminalWindowTitle(
+  sessionId: string,
+  projectName: string,
+  options?: { hasBeads?: boolean; hasGit?: boolean; hasGithub?: boolean }
+): void {
+  const win = terminalWindows.get(sessionId);
+  if (win && !win.isDestroyed()) {
+    const gitIndicator = options?.hasGithub ? '🐙' : options?.hasGit ? '⎇' : '';
+    const indicators = [gitIndicator, options?.hasBeads ? '◆' : ''].filter(Boolean).join('');
+    const title = indicators ? `${indicators} ${projectName}` : projectName;
+    win.setTitle(title);
+  }
+}
+
 export function cycleTerminalWindows(direction: 'next' | 'prev' = 'next'): void {
   const windows = Array.from(terminalWindows.values()).filter(w => !w.isDestroyed());
   if (windows.length === 0) return;
