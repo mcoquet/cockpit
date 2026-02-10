@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -8,6 +8,7 @@ export default function Terminal() {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const [isFocused, setIsFocused] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -89,14 +90,21 @@ export default function Terminal() {
       terminal.focus();
     }, 100);
 
-    // Focus terminal when window gains focus
-    const handleFocus = () => terminalRef.current?.focus();
+    // Focus terminal when window gains focus, track focus state for visual feedback
+    const handleFocus = () => {
+      setIsFocused(true);
+      terminalRef.current?.focus();
+    };
+    const handleBlur = () => setIsFocused(false);
+
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
 
     return () => {
       if (scrollTimeout) clearTimeout(scrollTimeout);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
       terminal.dispose();
     };
   }, []);
@@ -105,8 +113,8 @@ export default function Terminal() {
 
   return (
     <>
-      <div className="drag-region">{title}</div>
-      <div className="terminal-wrapper">
+      <div className={`drag-region ${!isFocused ? 'unfocused' : ''}`}>{title}</div>
+      <div className={`terminal-wrapper ${!isFocused ? 'unfocused' : ''}`}>
         <div ref={containerRef} className="terminal-container" />
         <div className="terminal-spacer" />
       </div>

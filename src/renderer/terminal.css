@@ -63,3 +63,24 @@ body {
 .terminal-container .xterm-viewport {
   overflow-y: auto !important;
 }
+
+/* Fade unfocused windows */
+.terminal-wrapper.unfocused {
+  opacity: 0.2;
+  transition: opacity 0.15s ease;
+}
+
+.terminal-wrapper:not(.unfocused) {
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.drag-region.unfocused {
+  opacity: 0.2;
+  transition: opacity 0.15s ease;
+}
+
+.drag-region:not(.unfocused) {
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
