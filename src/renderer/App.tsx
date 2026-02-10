@@ -137,23 +137,57 @@ export default function App() {
     return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
   });
 
+  // Empty state actions when no projects match
+  const emptyStateActions = [
+    { id: 'choose-folder', label: 'Choose folder', icon: '📁' },
+    { id: 'create-project', label: 'Create new project', icon: '✨' },
+  ];
+
+  // Total navigable items count
+  const totalItems = filtered.length > 0 ? filtered.length : emptyStateActions.length;
+
+  // Constrain selectedIndex when totalItems changes
+  useEffect(() => {
+    if (selectedIndex >= totalItems && totalItems > 0) {
+      setSelectedIndex(0);
+    }
+  }, [totalItems, selectedIndex]);
+
   // Scroll selected item into view
   useEffect(() => {
-    const item = listRef.current?.children[selectedIndex] as HTMLElement | undefined;
+    const container = listRef.current;
+    if (!container) return;
+
+    // Handle both project list and empty state actions
+    const items = filtered.length > 0
+      ? container.children
+      : container.querySelector('.empty-state')?.querySelectorAll('.empty-state-action');
+
+    const item = items?.[selectedIndex] as HTMLElement | undefined;
     item?.scrollIntoView({ block: 'nearest' });
-  }, [selectedIndex]);
+  }, [selectedIndex, filtered.length]);
+
+  function handleEmptyStateAction(actionId: string) {
+    if (actionId === 'choose-folder') {
+      handleAddProject();
+    } else if (actionId === 'create-project') {
+      setMode('create');
+    }
+  }
 
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1) % filtered.length);
+      setSelectedIndex((prev) => (prev + 1) % totalItems);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 + filtered.length) % filtered.length);
+      setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems);
     } else if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (filtered.length > 0) {
         handleProjectClick(filtered[selectedIndex], e as unknown as React.MouseEvent);
+      } else if (emptyStateActions[selectedIndex]) {
+        handleEmptyStateAction(emptyStateActions[selectedIndex].id);
       }
     }
   }
@@ -193,37 +227,57 @@ export default function App() {
             />
           </div>
           <div className="project-list" ref={listRef}>
-            {filtered.map((project, index) => {
-              const name = project.name || project.path.split('/').pop();
-              const isActive = !!sessions[project.path];
-              const isSelected = index === selectedIndex;
-              return (
-                <div
-                  key={project.path}
-                  className={`project-item ${isSelected ? 'selected' : ''}`}
-                  onClick={(e) => handleProjectClick(project, e)}
-                  onContextMenu={(e) => handleContextMenu(project, e)}
-                >
-                  <div className="project-header">
-                    {isActive && <span className="active-indicator">●</span>}
-                    <span className="project-name">{name}</span>
-                    {(project.hasGit || project.hasBeads) && (
-                      <span className="project-indicators">
-                        {project.hasGithub ? (
-                          <span className="github-indicator" title="GitHub repository">🐙</span>
-                        ) : project.hasGit ? (
-                          <span className="git-indicator" title="Git repository">⎇</span>
-                        ) : null}
-                        {project.hasBeads && <span className="beads-indicator" title="Has beads">◆</span>}
-                      </span>
+            {filtered.length > 0 ? (
+              filtered.map((project, index) => {
+                const name = project.name || project.path.split('/').pop();
+                const isActive = !!sessions[project.path];
+                const isSelected = index === selectedIndex;
+                return (
+                  <div
+                    key={project.path}
+                    className={`project-item ${isSelected ? 'selected' : ''}`}
+                    onClick={(e) => handleProjectClick(project, e)}
+                    onContextMenu={(e) => handleContextMenu(project, e)}
+                  >
+                    <div className="project-header">
+                      {isActive && <span className="active-indicator">●</span>}
+                      <span className="project-name">{name}</span>
+                      {(project.hasGit || project.hasBeads) && (
+                        <span className="project-indicators">
+                          {project.hasGithub ? (
+                            <span className="github-indicator" title="GitHub repository">🐙</span>
+                          ) : project.hasGit ? (
+                            <span className="git-indicator" title="Git repository">⎇</span>
+                          ) : null}
+                          {project.hasBeads && <span className="beads-indicator" title="Has beads">◆</span>}
+                        </span>
+                      )}
+                    </div>
+                    {project.description && (
+                      <div className="project-description">{project.description}</div>
                     )}
                   </div>
-                  {project.description && (
-                    <div className="project-description">{project.description}</div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="empty-state">
+                {search && (
+                  <div className="empty-state-message">
+                    No projects match "{search}"
+                  </div>
+                )}
+                {emptyStateActions.map((action, index) => (
+                  <div
+                    key={action.id}
+                    className={`empty-state-action ${index === selectedIndex ? 'selected' : ''}`}
+                    onClick={() => handleEmptyStateAction(action.id)}
+                  >
+                    <span className="empty-state-icon">{action.icon}</span>
+                    <span className="empty-state-label">{action.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="footer">
             <button onClick={handleAddProject}>+ Add Existing</button>

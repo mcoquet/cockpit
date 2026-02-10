@@ -625,7 +625,9 @@ function createAppMenu(): void {
 }
 
 // Enforce single instance - show popup if already running
-const gotTheLock = app.requestSingleInstanceLock();
+// Skip in development to allow dev and prod to run side-by-side
+const isDev = process.env.NODE_ENV === 'development';
+const gotTheLock = isDev || app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   app.quit();

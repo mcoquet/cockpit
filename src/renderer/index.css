@@ -369,3 +369,42 @@ body {
   color: #555;
   cursor: not-allowed;
 }
+
+/* Empty state */
+.empty-state {
+  padding: 8px 0;
+}
+
+.empty-state-message {
+  padding: 12px 16px;
+  color: #666;
+  font-size: 12px;
+  text-align: center;
+}
+
+.empty-state-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.empty-state-action:hover {
+  background: #2a2a2a;
+}
+
+.empty-state-action.selected {
+  background: #0a84ff33;
+  border-left: 2px solid #0a84ff;
+}
+
+.empty-state-icon {
+  font-size: 16px;
+}
+
+.empty-state-label {
+  font-weight: 500;
+  color: #e0e0e0;
+}
