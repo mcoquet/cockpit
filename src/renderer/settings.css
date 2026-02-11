@@ -28,16 +28,14 @@ body {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 20px;
-  color: #fff;
+  color: #e0e0e0;
   -webkit-app-region: no-drag;
 }
 
 /* Card styling */
 .settings-card {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #2a2a2a;
+  border: 1px solid #333;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
@@ -49,7 +47,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #888;
   margin-bottom: 12px;
 }
 
@@ -63,18 +61,18 @@ body {
 .setting-row + .setting-row {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid #333;
 }
 
 .setting-label {
   font-size: 14px;
   font-weight: 500;
-  color: #fff;
+  color: #e0e0e0;
 }
 
 .setting-description {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  color: #888;
   margin-top: 2px;
 }
 
@@ -86,8 +84,8 @@ body {
 }
 
 .shortcut-display {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1e1e1e;
+  border: 1px solid #444;
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
@@ -95,12 +93,12 @@ body {
   cursor: pointer;
   min-width: 120px;
   text-align: center;
-  color: #fff;
+  color: #e0e0e0;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .shortcut-display:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: #555;
 }
 
 .shortcut-display:focus {
@@ -126,9 +124,9 @@ body {
 }
 
 .clear-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: #333;
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: #888;
   font-size: 12px;
   cursor: pointer;
   padding: 6px 10px;
@@ -137,23 +135,23 @@ body {
 }
 
 .clear-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: #444;
+  color: #e0e0e0;
 }
 
 /* Terminal select dropdown */
 .terminal-select {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1e1e1e;
+  border: 1px solid #444;
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 13px;
-  color: #fff;
+  color: #e0e0e0;
   cursor: pointer;
   min-width: 120px;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   padding-right: 30px;
@@ -161,7 +159,7 @@ body {
 }
 
 .terminal-select:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: #555;
 }
 
 .terminal-select:focus {
@@ -179,11 +177,11 @@ body {
   position: relative;
   width: 44px;
   height: 24px;
-  background: rgba(0, 0, 0, 0.3);
+  background: #1e1e1e;
   border-radius: 12px;
   cursor: pointer;
   transition: background 0.2s;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #444;
 }
 
 .toggle-switch.active {
