@@ -10,6 +10,7 @@ const Store = ElectronStore.default || ElectronStore;
 const DEFAULT_SETTINGS: AppSettings = {
   globalShortcut: '',
   launchAtLogin: false,
+  externalTerminal: 'terminal',
 };
 
 interface SettingsStoreSchema {
@@ -32,7 +33,9 @@ let currentShortcut: string | null = null;
 let shortcutCallback: (() => void) | null = null;
 
 export function getSettings(): AppSettings {
-  return store.get('settings');
+  // Merge stored settings with defaults to handle new fields
+  const stored = store.get('settings');
+  return { ...DEFAULT_SETTINGS, ...stored };
 }
 
 export function getCreateLocation(): string {

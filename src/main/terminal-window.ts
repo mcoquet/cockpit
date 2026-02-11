@@ -1,12 +1,17 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, dialog } from 'electron';
 import path from 'path';
+import os from 'os';
+import { execFile } from 'child_process';
+import * as settings from './settings';
 
 const terminalWindows = new Map<string, BrowserWindow>();
+const terminalProjectPaths = new Map<string, string>();
 let lastFocusedTerminalId: number | null = null;
 
 export interface TerminalWindowOptions {
   sessionId: string;
   projectName: string;
+  projectPath: string;
   hasBeads?: boolean;
   hasGit?: boolean;
   hasGithub?: boolean;
@@ -14,7 +19,10 @@ export interface TerminalWindowOptions {
 }
 
 export function createTerminalWindow(options: TerminalWindowOptions): BrowserWindow {
-  const { sessionId, projectName, hasBeads, hasGit, hasGithub, onClose } = options;
+  const { sessionId, projectName, projectPath, hasBeads, hasGit, hasGithub, onClose } = options;
+
+  // Store project path for external terminal shortcut
+  terminalProjectPaths.set(sessionId, projectPath);
   // Show GitHub indicator if github remote exists, otherwise show git indicator
   const gitIndicator = hasGithub ? '🐙' : hasGit ? '⎇' : '';
   const indicators = [gitIndicator, hasBeads ? '◆' : ''].filter(Boolean).join('');
@@ -63,6 +71,10 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
       } else if (input.key === 'ArrowLeft') {
         event.preventDefault();
         cycleTerminalWindows('prev');
+      } else if (input.key.toLowerCase() === 't') {
+        // Cmd+T: Open external terminal in project directory
+        event.preventDefault();
+        openExternalTerminal(sessionId);
       }
     }
   });
@@ -76,6 +88,7 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
       lastFocusedTerminalId = null;
     }
     terminalWindows.delete(sessionId);
+    terminalProjectPaths.delete(sessionId);
     onClose?.();
   });
 
@@ -151,4 +164,75 @@ export function getFocusedTerminalWindowId(): number | null {
     }
   }
   return null;
+}
+
+export function openExternalTerminal(sessionId: string): void {
+  const projectPath = terminalProjectPaths.get(sessionId);
+  if (!projectPath) return;
+
+  // Expand ~ to home directory
+  const fullPath = projectPath.startsWith('~')
+    ? path.join(os.homedir(), projectPath.slice(1))
+    : projectPath.startsWith('/')
+      ? projectPath
+      : path.join(os.homedir(), projectPath);
+
+  const appSettings = settings.getSettings();
+  const terminal = appSettings.externalTerminal || 'terminal';
+
+  // Escape path for shell usage
+  const escapedPath = fullPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  const handleError = (appName: string) => {
+    dialog.showMessageBox({
+      type: 'error',
+      title: 'Could not open terminal',
+      message: `Could not open ${appName}. Is it installed?`,
+      detail: 'You can change your external terminal in Settings.',
+      buttons: ['OK'],
+    });
+  };
+
+  if (terminal === 'terminal') {
+    // Terminal.app via AppleScript
+    const script = `
+      tell application "Terminal"
+        activate
+        do script "cd \\"${escapedPath}\\""
+      end tell
+    `;
+    execFile('osascript', ['-e', script], (err) => {
+      if (err) handleError('Terminal.app');
+    });
+  } else if (terminal === 'iterm') {
+    // iTerm2 via AppleScript
+    const script = `
+      tell application "iTerm"
+        activate
+        set newWindow to (create window with default profile)
+        tell current session of newWindow
+          write text "cd \\"${escapedPath}\\""
+        end tell
+      end tell
+    `;
+    execFile('osascript', ['-e', script], (err) => {
+      if (err) handleError('iTerm');
+    });
+  } else if (terminal === 'warp') {
+    // Warp opens to directory natively
+    execFile('open', ['-a', 'Warp', fullPath], (err) => {
+      if (err) handleError('Warp');
+    });
+  } else if (terminal === 'kitty') {
+    // Kitty supports directory argument
+    execFile('open', ['-a', 'kitty', fullPath], (err) => {
+      if (err) handleError('Kitty');
+    });
+  } else if (terminal.startsWith('custom:')) {
+    // Custom app - use generic open command
+    const appName = terminal.slice(7); // Remove "custom:" prefix
+    execFile('open', ['-a', appName, fullPath], (err) => {
+      if (err) handleError(appName);
+    });
+  }
 }

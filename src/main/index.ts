@@ -295,6 +295,21 @@ function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0];
   });
 
+  ipcMain.handle('select-app', async () => {
+    const result = await dialog.showOpenDialog({
+      defaultPath: '/Applications',
+      properties: ['openFile'],
+      filters: [{ name: 'Applications', extensions: ['app'] }],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    // Extract app name from path (e.g., "/Applications/Alacritty.app" -> "Alacritty")
+    const appPath = result.filePaths[0];
+    const appName = path.basename(appPath, '.app');
+    return appName;
+  });
+
   ipcMain.on('close-popup', () => {
     if (popupWindow) {
       popupWindow.hide();
@@ -515,6 +530,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
   const win = terminalWindow.createTerminalWindow({
     sessionId,
     projectName,
+    projectPath,
     hasBeads: project?.hasBeads,
     hasGit: project?.hasGit,
     hasGithub: project?.hasGithub,
@@ -691,6 +707,22 @@ function createAppMenu(): void {
           label: 'Previous Terminal',
           accelerator: 'CommandOrControl+Left',
           click: () => terminalWindow.cycleTerminalWindows('prev'),
+        },
+        { type: 'separator' },
+        {
+          label: 'Open in External Terminal',
+          accelerator: 'CommandOrControl+T',
+          click: () => {
+            const focusedWindowId = terminalWindow.getFocusedTerminalWindowId();
+            if (!focusedWindowId) return;
+            // Find the sessionId for the focused window
+            for (const session of Object.values(activeSessions)) {
+              if (session.windowId === focusedWindowId) {
+                terminalWindow.openExternalTerminal(session.sessionId);
+                break;
+              }
+            }
+          },
         },
       ],
     },

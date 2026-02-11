@@ -12,9 +12,12 @@ export interface ActiveSession {
   windowId: number;
 }
 
+export type ExternalTerminal = 'terminal' | 'iterm' | 'warp' | 'kitty' | `custom:${string}`;
+
 export interface AppSettings {
   globalShortcut: string;
   launchAtLogin: boolean;
+  externalTerminal: ExternalTerminal;
 }
 
 export interface DailyActivity {
@@ -52,6 +55,7 @@ export interface CockpitAPI {
   openSession: (path: string, forceNew?: boolean) => Promise<void>;
   getActiveSessions: () => Promise<Record<string, ActiveSession>>;
   selectFolder: () => Promise<string | null>;
+  selectApp: () => Promise<string | null>;
   closePopup: () => void;
   onSessionsChanged: (callback: (sessions: Record<string, ActiveSession>) => void) => void;
   getSettings: () => Promise<AppSettings>;
