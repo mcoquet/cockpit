@@ -23,6 +23,10 @@ const TRAY_SYMBOL = process.env.NODE_ENV === 'development' ? 'Ω' : 'λ';
 // Track active sessions in memory
 const activeSessions: Record<string, ActiveSession> = {};
 
+// Map windowId to sessionId for reliable PTY input routing
+// (activeSessions is keyed by projectPath, which doesn't support multiple sessions per project)
+const windowToSession = new Map<number, string>();
+
 // Debounce bell notifications per session (prevent spam)
 const lastBellTime: Record<string, number> = {};
 const BELL_DEBOUNCE_MS = 10000; // 10 seconds between notifications
@@ -396,16 +400,12 @@ function registerIpcHandlers(): void {
 
   // Terminal IPC handlers
   ipcMain.on('pty-input', (event, data: string) => {
-    // Get sessionId from the sender window
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
     if (!senderWindow) return;
 
-    // Find the session for this window
-    for (const session of Object.values(activeSessions)) {
-      if (session.windowId === senderWindow.id) {
-        pty.writeToSession(session.sessionId, data);
-        break;
-      }
+    const sessionId = windowToSession.get(senderWindow.id);
+    if (sessionId) {
+      pty.writeToSession(sessionId, data);
     }
   });
 
@@ -413,11 +413,9 @@ function registerIpcHandlers(): void {
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
     if (!senderWindow) return;
 
-    for (const session of Object.values(activeSessions)) {
-      if (session.windowId === senderWindow.id) {
-        pty.resizeSession(session.sessionId, cols, rows);
-        break;
-      }
+    const sessionId = windowToSession.get(senderWindow.id);
+    if (sessionId) {
+      pty.resizeSession(sessionId, cols, rows);
     }
   });
 
@@ -589,6 +587,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
       if (activeSessions[projectPath]?.sessionId === sessionId) {
         delete activeSessions[projectPath];
       }
+      windowToSession.delete(win.id);
       delete lastBellTime[sessionId];
       notifySessionsChanged();
     },
@@ -597,6 +596,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
   // For multiple sessions per project, we need a different key
   // But for now, keep the simple model - just track the latest
   activeSessions[projectPath] = { sessionId, windowId: win.id };
+  windowToSession.set(win.id, sessionId);
   notifySessionsChanged();
 
   pty.onSessionOutput(sessionId, (data) => {
