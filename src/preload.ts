@@ -25,6 +25,9 @@ const cockpitApi: CockpitAPI = {
   createProject: (name: string, location: string) => ipcRenderer.invoke('create-project', name, location),
   getClaudeStats: () => ipcRenderer.invoke('get-claude-stats'),
   getServiceStatus: () => ipcRenderer.invoke('get-service-status'),
+  onFocusSearch: (callback) => {
+    ipcRenderer.on('focus-search', () => callback());
+  },
 };
 
 const terminalApi: TerminalAPI = {

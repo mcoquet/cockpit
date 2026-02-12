@@ -92,6 +92,7 @@ function showPopupWindow(): void {
   popupWindow.setPosition(x, y);
   popupWindow.show();
   popupWindow.focus();
+  popupWindow.webContents.send('focus-search');
 }
 
 function createTray(): void {

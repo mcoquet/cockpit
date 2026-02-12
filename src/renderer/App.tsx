@@ -32,6 +32,7 @@ export default function App() {
     };
     focusCurrentInput();
     window.addEventListener('focus', focusCurrentInput);
+    window.cockpit.onFocusSearch(focusCurrentInput);
 
     return () => {
       window.removeEventListener('focus', focusCurrentInput);

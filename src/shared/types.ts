@@ -65,6 +65,7 @@ export interface CockpitAPI {
   createProject: (name: string, location: string) => Promise<boolean>;
   getClaudeStats?: () => Promise<ClaudeStats>;
   getServiceStatus?: () => Promise<ServiceStatus>;
+  onFocusSearch: (callback: () => void) => void;
 }
 
 export interface ContextMenuOptions {
