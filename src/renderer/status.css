@@ -26,6 +26,12 @@ body {
   flex-direction: column;
 }
 
+/* Dev mode indicator */
+body.dev .status {
+  border: 2px solid #b59f3b;
+  border-radius: 10px;
+}
+
 .status h1 {
   position: fixed;
   top: 0;

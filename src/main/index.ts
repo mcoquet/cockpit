@@ -54,7 +54,7 @@ function createPopupWindow(): BrowserWindow {
   });
 
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5173');
+    win.loadURL('http://localhost:5173?dev=1');
   } else {
     win.loadFile(path.join(__dirname, '../../renderer/index.html'));
   }
@@ -116,7 +116,7 @@ function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 420,
     height: 420,
-    title: 'Cockpit Settings',
+    title: process.env.NODE_ENV === 'development' ? 'Cockpit Settings (Dev)' : 'Cockpit Settings',
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -133,7 +133,7 @@ function createSettingsWindow(): BrowserWindow {
   });
 
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5173/settings.html');
+    win.loadURL('http://localhost:5173/settings.html?dev=1');
   } else {
     win.loadFile(path.join(__dirname, '../../renderer/settings.html'));
   }
@@ -157,7 +157,7 @@ function createStatusWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 420,
     height: 320,
-    title: 'Claude Status',
+    title: process.env.NODE_ENV === 'development' ? 'Claude Status (Dev)' : 'Claude Status',
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -174,7 +174,7 @@ function createStatusWindow(): BrowserWindow {
   });
 
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5173/status.html');
+    win.loadURL('http://localhost:5173/status.html?dev=1');
   } else {
     win.loadFile(path.join(__dirname, '../../renderer/status.html'));
   }

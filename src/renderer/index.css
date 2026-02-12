@@ -22,6 +22,12 @@ body {
   overflow: hidden;
 }
 
+/* Dev mode indicator */
+body.dev .app {
+  border-color: #b59f3b;
+  box-shadow: inset 0 0 0 1px #b59f3b;
+}
+
 /* Mode tabs */
 .mode-tabs {
   display: flex;

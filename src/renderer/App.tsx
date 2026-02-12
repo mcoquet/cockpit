@@ -2,6 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import type { Project, ActiveSession } from '../shared/types';
 import ProjectEditor from './ProjectEditor';
 
+// Apply dev mode class if running in development
+if (new URLSearchParams(window.location.search).has('dev')) {
+  document.body.classList.add('dev');
+}
+
 type Mode = 'search' | 'create';
 
 export default function App() {

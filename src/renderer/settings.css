@@ -24,6 +24,12 @@ body {
   flex-direction: column;
 }
 
+/* Dev mode indicator */
+body.dev .settings {
+  border: 2px solid #b59f3b;
+  border-radius: 10px;
+}
+
 .settings h1 {
   font-size: 18px;
   font-weight: 600;

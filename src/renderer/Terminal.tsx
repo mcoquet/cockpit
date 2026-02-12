@@ -4,6 +4,11 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
+// Apply dev mode class if running in development
+if (new URLSearchParams(window.location.search).has('dev')) {
+  document.body.classList.add('dev');
+}
+
 // Link detection patterns
 const URL_PATTERN = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
 const PATH_PATTERN = /(?:~|\.\.?)?(?:\/[\w._-]+)+\/?/g;

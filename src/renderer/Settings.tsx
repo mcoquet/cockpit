@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import type { ExternalTerminal } from '../shared/types';
 
+// Apply dev mode class if running in development
+if (new URLSearchParams(window.location.search).has('dev')) {
+  document.body.classList.add('dev');
+}
+
 interface Settings {
   globalShortcut: string;
   launchAtLogin: boolean;

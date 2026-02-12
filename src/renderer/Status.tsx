@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 
+// Apply dev mode class if running in development
+if (new URLSearchParams(window.location.search).has('dev')) {
+  document.body.classList.add('dev');
+}
+
 interface DailyActivity {
   date: string;
   messageCount: number;

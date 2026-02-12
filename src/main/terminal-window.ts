@@ -26,7 +26,8 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
   // Show GitHub indicator if github remote exists, otherwise show git indicator
   const gitIndicator = hasGithub ? '🐙' : hasGit ? '⎇' : '';
   const indicators = [gitIndicator, hasBeads ? '◆' : ''].filter(Boolean).join('');
-  const title = indicators ? `${indicators} ${projectName}` : projectName;
+  const devSuffix = process.env.NODE_ENV === 'development' ? ' (Dev)' : '';
+  const title = (indicators ? `${indicators} ${projectName}` : projectName) + devSuffix;
 
   const win = new BrowserWindow({
     width: 800,
@@ -46,7 +47,7 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
 
   // Pass sessionId and title to renderer via query param
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}&title=${encodeURIComponent(title)}`);
+    win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}&title=${encodeURIComponent(title)}&dev=1`);
   } else {
     win.loadFile(path.join(__dirname, '../../renderer/terminal.html'), {
       query: { sessionId, title },
