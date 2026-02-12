@@ -4,6 +4,10 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
+// Link detection patterns
+const URL_PATTERN = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
+const PATH_PATTERN = /(?:~|\.\.?)?(?:\/[\w._-]+)+\/?/g;
+
 export default function Terminal() {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTerm | null>(null);
@@ -149,7 +153,81 @@ export default function Terminal() {
       },
     });
 
+    // Right-click context menu for links and selected text
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+
+      // Get selected text
+      const selectedText = terminal.getSelection();
+      const hasSelection = selectedText.length > 0;
+
+      // Detect link at click position
+      const terminalElement = containerRef.current?.querySelector('.xterm-screen');
+      if (!terminalElement) return;
+
+      const rect = terminalElement.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Calculate cell dimensions
+      const cellWidth = rect.width / terminal.cols;
+      const cellHeight = rect.height / terminal.rows;
+
+      // Convert to buffer position
+      const col = Math.floor(x / cellWidth);
+      const row = Math.floor(y / cellHeight) + terminal.buffer.active.viewportY;
+
+      // Get the line at this position
+      const line = terminal.buffer.active.getLine(row);
+      if (!line && !hasSelection) return;
+
+      let link: { type: 'url' | 'path'; text: string } | undefined;
+
+      if (line) {
+        const lineText = line.translateToString();
+
+        // Check for URL at click position
+        URL_PATTERN.lastIndex = 0;
+        let urlMatch;
+        while ((urlMatch = URL_PATTERN.exec(lineText)) !== null) {
+          const start = urlMatch.index;
+          const end = start + urlMatch[0].length;
+          if (col >= start && col < end) {
+            link = { type: 'url', text: urlMatch[0] };
+            break;
+          }
+        }
+
+        // If no URL, check for file path
+        if (!link) {
+          PATH_PATTERN.lastIndex = 0;
+          let pathMatch;
+          while ((pathMatch = PATH_PATTERN.exec(lineText)) !== null) {
+            const start = pathMatch.index;
+            const end = start + pathMatch[0].length;
+            if (col >= start && col < end) {
+              link = { type: 'path', text: pathMatch[0] };
+              break;
+            }
+          }
+        }
+      }
+
+      // Only show menu if we have something to show
+      if (!link && !hasSelection) return;
+
+      window.terminal.showContextMenu({
+        hasSelection,
+        selectedText: hasSelection ? selectedText : undefined,
+        link,
+      });
+    };
+
+    const container = containerRef.current;
+    container?.addEventListener('contextmenu', handleContextMenu);
+
     return () => {
+      container?.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);

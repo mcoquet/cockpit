@@ -1,4 +1,4 @@
-import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification, Menu, shell } from 'electron';
+import { app, Tray, BrowserWindow, nativeImage, ipcMain, dialog, globalShortcut, screen, Notification, Menu, shell, clipboard } from 'electron';
 import log from 'electron-log';
 import fs from 'fs';
 import path from 'path';
@@ -10,7 +10,7 @@ import { requestPermission } from './permissions';
 import * as settings from './settings';
 import { getClaudeStats } from './claude-stats';
 import type { AppSettings } from '../shared/types';
-import type { Project, ActiveSession, ServiceStatus } from '../shared/types';
+import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions } from '../shared/types';
 
 let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
@@ -432,6 +432,53 @@ function registerIpcHandlers(): void {
       shell.openPath(expandedPath);
     } else {
       log.warn('[open-path] Path does not exist:', expandedPath);
+    }
+  });
+
+  // Terminal context menu (right-click on links/selection)
+  ipcMain.on('terminal-context-menu', (_event, options: ContextMenuOptions) => {
+    const menuItems: Electron.MenuItemConstructorOptions[] = [];
+
+    // Link options
+    if (options.link) {
+      const { type, text } = options.link;
+      menuItems.push({
+        label: 'Open',
+        click: () => {
+          if (type === 'url') {
+            shell.openExternal(text);
+          } else {
+            // File path - expand ~ and open
+            const expandedPath = text.startsWith('~')
+              ? path.join(app.getPath('home'), text.slice(1))
+              : text;
+            if (fs.existsSync(expandedPath)) {
+              shell.openPath(expandedPath);
+            }
+          }
+        },
+      });
+      menuItems.push({
+        label: 'Copy Link',
+        click: () => clipboard.writeText(text),
+      });
+    }
+
+    // Selection options
+    if (options.hasSelection && options.selectedText) {
+      if (menuItems.length > 0) {
+        menuItems.push({ type: 'separator' });
+      }
+      menuItems.push({
+        label: 'Copy',
+        click: () => clipboard.writeText(options.selectedText!),
+      });
+    }
+
+    // Only show menu if there are items
+    if (menuItems.length > 0) {
+      const menu = Menu.buildFromTemplate(menuItems);
+      menu.popup();
     }
   });
 }

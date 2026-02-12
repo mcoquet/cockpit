@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI } from './shared/types';
+import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions } from './shared/types';
 
 const cockpitApi: CockpitAPI = {
   getProjects: () => ipcRenderer.invoke('get-projects'),
@@ -45,6 +45,9 @@ const terminalApi: TerminalAPI = {
   },
   openPath: (path: string) => {
     ipcRenderer.send('open-path', path);
+  },
+  showContextMenu: (options: ContextMenuOptions) => {
+    ipcRenderer.send('terminal-context-menu', options);
   },
 };
 

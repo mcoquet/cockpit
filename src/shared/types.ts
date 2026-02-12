@@ -67,12 +67,19 @@ export interface CockpitAPI {
   getServiceStatus?: () => Promise<ServiceStatus>;
 }
 
+export interface ContextMenuOptions {
+  hasSelection: boolean;
+  selectedText?: string;
+  link?: { type: 'url' | 'path'; text: string };
+}
+
 export interface TerminalAPI {
   getSessionId: () => string | null;
   sendInput: (data: string) => void;
   onOutput: (callback: (data: string) => void) => void;
   resize: (cols: number, rows: number) => void;
   openPath: (path: string) => void;
+  showContextMenu: (options: ContextMenuOptions) => void;
 }
 
 declare global {
