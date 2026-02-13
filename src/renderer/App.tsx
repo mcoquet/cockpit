@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import type { Project, ActiveSession, SessionInfo } from '../shared/types';
 import ProjectEditor from './ProjectEditor';
 
@@ -8,6 +8,10 @@ if (new URLSearchParams(window.location.search).has('dev')) {
 }
 
 type Mode = 'search' | 'create';
+
+type NavItem =
+  | { type: 'project'; project: Project }
+  | { type: 'session'; project: Project; session: SessionInfo };
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -232,6 +236,18 @@ export default function App() {
     return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
   });
 
+  // Build flat navigation list of projects + expanded sessions
+  const navItems: NavItem[] = useMemo(() => {
+    return filtered.flatMap((project) => {
+      const items: NavItem[] = [{ type: 'project', project }];
+      if (expandedProjects.has(project.path)) {
+        const sessions = projectSessions[project.path] || [];
+        items.push(...sessions.map((session) => ({ type: 'session' as const, project, session })));
+      }
+      return items;
+    });
+  }, [filtered, expandedProjects, projectSessions]);
+
   // Empty state actions when no projects match
   const emptyStateActions = [
     { id: 'choose-folder', label: 'Choose folder', icon: '📁' },
@@ -239,7 +255,7 @@ export default function App() {
   ];
 
   // Total navigable items count
-  const totalItems = filtered.length > 0 ? filtered.length : emptyStateActions.length;
+  const totalItems = navItems.length > 0 ? navItems.length : emptyStateActions.length;
 
   // Constrain selectedIndex when totalItems changes
   useEffect(() => {
@@ -255,23 +271,53 @@ export default function App() {
 
     // Handle both project list and empty state actions
     let item: HTMLElement | null = null;
-    if (filtered.length > 0) {
-      // Find the .project-item inside the wrapper at selectedIndex
-      const wrapper = container.children[selectedIndex] as HTMLElement | undefined;
-      item = wrapper?.querySelector('.project-item') as HTMLElement | null;
+    if (navItems.length > 0) {
+      // Find the selected item (project or session)
+      item = container.querySelector('.project-item.selected, .session-item.selected') as HTMLElement | null;
     } else {
       const actions = container.querySelector('.empty-state')?.querySelectorAll('.empty-state-action');
       item = actions?.[selectedIndex] as HTMLElement | null;
     }
 
     item?.scrollIntoView({ block: 'nearest' });
-  }, [selectedIndex, filtered.length]);
+  }, [selectedIndex, navItems.length]);
 
   function handleEmptyStateAction(actionId: string) {
     if (actionId === 'choose-folder') {
       handleAddProject();
     } else if (actionId === 'create-project') {
       setMode('create');
+    }
+  }
+
+  async function handleExpandProject(project: Project) {
+    const path = project.path;
+    if (!hasHistory[path]) return;
+
+    const newExpanded = new Set(expandedProjects);
+    newExpanded.add(path);
+
+    // Load sessions if not already loaded
+    if (!projectSessions[path]) {
+      const sessions = await window.cockpit.getProjectSessions(path, 5);
+      setProjectSessions((prev) => ({ ...prev, [path]: sessions }));
+      const allSessions = await window.cockpit.getProjectSessions(path);
+      setSessionCounts((prev) => ({ ...prev, [path]: allSessions.length }));
+    }
+    setExpandedProjects(newExpanded);
+  }
+
+  function handleCollapseProject(project: Project) {
+    const newExpanded = new Set(expandedProjects);
+    newExpanded.delete(project.path);
+    setExpandedProjects(newExpanded);
+
+    // Move selection to the project
+    const projectIndex = navItems.findIndex(
+      (item) => item.type === 'project' && item.project.path === project.path
+    );
+    if (projectIndex >= 0) {
+      setSelectedIndex(projectIndex);
     }
   }
 
@@ -282,10 +328,27 @@ export default function App() {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const currentItem = navItems[selectedIndex];
+      if (currentItem?.type === 'project' && hasHistory[currentItem.project.path]) {
+        handleExpandProject(currentItem.project);
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const currentItem = navItems[selectedIndex];
+      if (currentItem) {
+        handleCollapseProject(currentItem.project);
+      }
     } else if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (filtered.length > 0) {
-        handleProjectClick(filtered[selectedIndex], e as unknown as React.MouseEvent);
+      if (navItems.length > 0) {
+        const currentItem = navItems[selectedIndex];
+        if (currentItem?.type === 'project') {
+          handleProjectClick(currentItem.project, e as unknown as React.MouseEvent);
+        } else if (currentItem?.type === 'session') {
+          handleSessionClick(currentItem.project, currentItem.session.sessionId);
+        }
       } else if (emptyStateActions[selectedIndex]) {
         handleEmptyStateAction(emptyStateActions[selectedIndex].id);
       }
@@ -328,10 +391,11 @@ export default function App() {
           </div>
           <div className="project-list" ref={listRef}>
             {filtered.length > 0 ? (
-              filtered.map((project, index) => {
+              filtered.map((project) => {
                 const name = project.name || project.path.split('/').pop();
                 const isActive = !!sessions[project.path];
-                const isSelected = index === selectedIndex;
+                const selectedItem = navItems[selectedIndex];
+                const isProjectSelected = selectedItem?.type === 'project' && selectedItem.project.path === project.path;
                 const isExpanded = expandedProjects.has(project.path);
                 const projectHasHistory = hasHistory[project.path];
                 const sessionList = projectSessions[project.path] || [];
@@ -341,7 +405,7 @@ export default function App() {
                 return (
                   <div key={project.path} className="project-wrapper">
                     <div
-                      className={`project-item ${isSelected ? 'selected' : ''}`}
+                      className={`project-item ${isProjectSelected ? 'selected' : ''}`}
                       onClick={(e) => handleProjectClick(project, e)}
                       onContextMenu={(e) => handleContextMenu(project, e)}
                     >
@@ -373,19 +437,24 @@ export default function App() {
                     </div>
                     {isExpanded && (
                       <div className="session-list">
-                        {sessionList.map((session) => (
-                          <div
-                            key={session.sessionId}
-                            className="session-item"
-                            onClick={() => handleSessionClick(project, session.sessionId)}
-                            onContextMenu={(e) => handleDeleteSession(project, session.sessionId, e)}
-                          >
-                            <span className="session-date">{formatRelativeDate(session.lastModified)}</span>
-                            <span className="session-message">
-                              {session.lastUserMessage || 'No message'}
-                            </span>
-                          </div>
-                        ))}
+                        {sessionList.map((session) => {
+                          const isSessionSelected = selectedItem?.type === 'session' &&
+                            selectedItem.project.path === project.path &&
+                            selectedItem.session.sessionId === session.sessionId;
+                          return (
+                            <div
+                              key={session.sessionId}
+                              className={`session-item ${isSessionSelected ? 'selected' : ''}`}
+                              onClick={() => handleSessionClick(project, session.sessionId)}
+                              onContextMenu={(e) => handleDeleteSession(project, session.sessionId, e)}
+                            >
+                              <span className="session-date">{formatRelativeDate(session.lastModified)}</span>
+                              <span className="session-message">
+                                {session.lastUserMessage || 'No message'}
+                              </span>
+                            </div>
+                          );
+                        })}
                         {hasMore && (
                           <button
                             className="show-more-btn"
