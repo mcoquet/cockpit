@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import type { Project, ActiveSession } from '../shared/types';
+import type { Project, ActiveSession, SessionInfo } from '../shared/types';
 import ProjectEditor from './ProjectEditor';
 
 // Apply dev mode class if running in development
@@ -21,6 +21,10 @@ export default function App() {
   const searchRef = useRef<HTMLTextAreaElement>(null);
   const createInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [projectSessions, setProjectSessions] = useState<Record<string, SessionInfo[]>>({});
+  const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
+  const [hasHistory, setHasHistory] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadData();
@@ -73,6 +77,7 @@ export default function App() {
     ]);
     setProjects(projectList);
     setSessions(activeSessions);
+    checkSessionHistory(projectList);
   }
 
   async function loadCreateLocation() {
@@ -80,6 +85,16 @@ export default function App() {
     if (location) {
       setNewProjectLocation(location);
     }
+  }
+
+  async function checkSessionHistory(projectList: Project[]) {
+    const historyMap: Record<string, boolean> = {};
+    await Promise.all(
+      projectList.map(async (p) => {
+        historyMap[p.path] = await window.cockpit.hasSessionHistory(p.path);
+      })
+    );
+    setHasHistory(historyMap);
   }
 
   async function handleAddProject() {
@@ -120,6 +135,81 @@ export default function App() {
   function handleContextMenu(project: Project, e: React.MouseEvent) {
     e.preventDefault();
     setEditing(project);
+  }
+
+  async function handleToggleExpand(project: Project, e: React.MouseEvent) {
+    e.stopPropagation();
+    const path = project.path;
+    const newExpanded = new Set(expandedProjects);
+
+    if (newExpanded.has(path)) {
+      newExpanded.delete(path);
+    } else {
+      newExpanded.add(path);
+      // Load sessions if not already loaded
+      if (!projectSessions[path]) {
+        const sessions = await window.cockpit.getProjectSessions(path, 5);
+        setProjectSessions((prev) => ({ ...prev, [path]: sessions }));
+        // Get total count for "Show more"
+        const allSessions = await window.cockpit.getProjectSessions(path);
+        setSessionCounts((prev) => ({ ...prev, [path]: allSessions.length }));
+      }
+    }
+    setExpandedProjects(newExpanded);
+  }
+
+  async function handleLoadMoreSessions(project: Project) {
+    const path = project.path;
+    const currentCount = projectSessions[path]?.length || 0;
+    const moreSessions = await window.cockpit.getProjectSessions(path, 5, currentCount);
+    setProjectSessions((prev) => ({
+      ...prev,
+      [path]: [...(prev[path] || []), ...moreSessions],
+    }));
+  }
+
+  async function handleSessionClick(project: Project, sessionId: string) {
+    await window.cockpit.openSessionById(project.path, sessionId);
+    const updated = await window.cockpit.getActiveSessions();
+    setSessions(updated);
+  }
+
+  async function handleDeleteSession(project: Project, sessionId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const deleted = await window.cockpit.deleteSession(project.path, sessionId);
+    if (deleted) {
+      // Refresh sessions for this project
+      const sessions = await window.cockpit.getProjectSessions(project.path, projectSessions[project.path]?.length || 5);
+      setProjectSessions((prev) => ({ ...prev, [project.path]: sessions }));
+      // Update count
+      const allSessions = await window.cockpit.getProjectSessions(project.path);
+      setSessionCounts((prev) => ({ ...prev, [project.path]: allSessions.length }));
+      // If no more sessions, collapse and update hasHistory
+      if (sessions.length === 0) {
+        setExpandedProjects((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(project.path);
+          return newSet;
+        });
+        setHasHistory((prev) => ({ ...prev, [project.path]: false }));
+      }
+    }
+  }
+
+  function formatRelativeDate(timestamp: number): string {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days}d ago`;
+
+    return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
   async function handleSaveProject(updates: Partial<Project>) {
@@ -238,29 +328,72 @@ export default function App() {
                 const name = project.name || project.path.split('/').pop();
                 const isActive = !!sessions[project.path];
                 const isSelected = index === selectedIndex;
+                const isExpanded = expandedProjects.has(project.path);
+                const projectHasHistory = hasHistory[project.path];
+                const sessionList = projectSessions[project.path] || [];
+                const totalSessions = sessionCounts[project.path] || 0;
+                const hasMore = sessionList.length < totalSessions;
+
                 return (
-                  <div
-                    key={project.path}
-                    className={`project-item ${isSelected ? 'selected' : ''}`}
-                    onClick={(e) => handleProjectClick(project, e)}
-                    onContextMenu={(e) => handleContextMenu(project, e)}
-                  >
-                    <div className="project-header">
-                      {isActive && <span className="active-indicator">●</span>}
-                      <span className="project-name">{name}</span>
-                      {(project.hasGit || project.hasBeads) && (
-                        <span className="project-indicators">
-                          {project.hasGithub ? (
-                            <span className="github-indicator" title="GitHub repository">🐙</span>
-                          ) : project.hasGit ? (
-                            <span className="git-indicator" title="Git repository">⎇</span>
-                          ) : null}
-                          {project.hasBeads && <span className="beads-indicator" title="Has beads">◆</span>}
-                        </span>
+                  <div key={project.path} className="project-wrapper">
+                    <div
+                      className={`project-item ${isSelected ? 'selected' : ''}`}
+                      onClick={(e) => handleProjectClick(project, e)}
+                      onContextMenu={(e) => handleContextMenu(project, e)}
+                    >
+                      <div className="project-header">
+                        {projectHasHistory && (
+                          <span
+                            className={`expand-triangle ${isExpanded ? 'expanded' : ''}`}
+                            onClick={(e) => handleToggleExpand(project, e)}
+                          >
+                            ▶
+                          </span>
+                        )}
+                        {isActive && <span className="active-indicator">●</span>}
+                        <span className="project-name">{name}</span>
+                        {(project.hasGit || project.hasBeads) && (
+                          <span className="project-indicators">
+                            {project.hasGithub ? (
+                              <span className="github-indicator" title="GitHub repository">🐙</span>
+                            ) : project.hasGit ? (
+                              <span className="git-indicator" title="Git repository">⎇</span>
+                            ) : null}
+                            {project.hasBeads && <span className="beads-indicator" title="Has beads">◆</span>}
+                          </span>
+                        )}
+                      </div>
+                      {project.description && (
+                        <div className="project-description">{project.description}</div>
                       )}
                     </div>
-                    {project.description && (
-                      <div className="project-description">{project.description}</div>
+                    {isExpanded && (
+                      <div className="session-list">
+                        {sessionList.map((session) => (
+                          <div
+                            key={session.sessionId}
+                            className="session-item"
+                            onClick={() => handleSessionClick(project, session.sessionId)}
+                            onContextMenu={(e) => handleDeleteSession(project, session.sessionId, e)}
+                          >
+                            <span className="session-date">{formatRelativeDate(session.lastModified)}</span>
+                            <span className="session-message">
+                              {session.lastUserMessage || 'No message'}
+                            </span>
+                          </div>
+                        ))}
+                        {hasMore && (
+                          <button
+                            className="show-more-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLoadMoreSessions(project);
+                            }}
+                          >
+                            Show more
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
