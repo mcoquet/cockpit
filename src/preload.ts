@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions } from './shared/types';
+import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions, SessionInfo } from './shared/types';
 
 const cockpitApi: CockpitAPI = {
   getProjects: () => ipcRenderer.invoke('get-projects'),
@@ -28,6 +28,14 @@ const cockpitApi: CockpitAPI = {
   onFocusSearch: (callback) => {
     ipcRenderer.on('focus-search', () => callback());
   },
+  getProjectSessions: (path: string, limit?: number, offset?: number): Promise<SessionInfo[]> =>
+    ipcRenderer.invoke('get-project-sessions', path, limit, offset),
+  hasSessionHistory: (path: string): Promise<boolean> =>
+    ipcRenderer.invoke('has-session-history', path),
+  deleteSession: (path: string, sessionId: string): Promise<boolean> =>
+    ipcRenderer.invoke('delete-session', path, sessionId),
+  openSessionById: (path: string, sessionId: string): Promise<void> =>
+    ipcRenderer.invoke('open-session-by-id', path, sessionId),
 };
 
 const terminalApi: TerminalAPI = {
