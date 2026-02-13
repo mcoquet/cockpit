@@ -167,6 +167,27 @@ export function getFocusedTerminalWindowId(): number | null {
   return null;
 }
 
+export function focusLastTerminalWindow(): boolean {
+  // Focus the last focused terminal window if it still exists
+  if (lastFocusedTerminalId) {
+    for (const win of terminalWindows.values()) {
+      if (win.id === lastFocusedTerminalId && !win.isDestroyed()) {
+        win.show();
+        win.focus();
+        return true;
+      }
+    }
+  }
+  // Fallback: focus any available terminal window
+  const windows = Array.from(terminalWindows.values()).filter(w => !w.isDestroyed());
+  if (windows.length > 0) {
+    windows[0].show();
+    windows[0].focus();
+    return true;
+  }
+  return false;
+}
+
 export function openExternalTerminal(sessionId: string): void {
   const projectPath = terminalProjectPaths.get(sessionId);
   if (!projectPath) return;
