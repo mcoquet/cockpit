@@ -9,6 +9,7 @@ import * as terminalWindow from './terminal-window';
 import { requestPermission } from './permissions';
 import * as settings from './settings';
 import { getClaudeStats } from './claude-stats';
+import * as sessions from './sessions';
 import type { AppSettings } from '../shared/types';
 import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions } from '../shared/types';
 
@@ -398,6 +399,41 @@ function registerIpcHandlers(): void {
     }
   });
 
+  // Session history handlers
+  ipcMain.handle('get-project-sessions', (_event, projectPath: string, limit?: number, offset?: number) => {
+    return sessions.getProjectSessions(projectPath, limit, offset);
+  });
+
+  ipcMain.handle('has-session-history', (_event, projectPath: string) => {
+    return sessions.hasSessionHistory(projectPath);
+  });
+
+  ipcMain.handle('delete-session', async (_event, projectPath: string, sessionId: string) => {
+    // Show confirmation dialog
+    const { response } = await dialog.showMessageBox({
+      type: 'warning',
+      buttons: ['Cancel', 'Delete'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Delete Session?',
+      message: 'Delete this session?',
+      detail: 'This will permanently delete the session history. This cannot be undone.',
+    });
+
+    if (response === 1) {
+      return sessions.deleteSession(projectPath, sessionId);
+    }
+    return false;
+  });
+
+  ipcMain.handle('open-session-by-id', async (_event, projectPath: string, sessionId: string) => {
+    // Hide popup window immediately
+    if (popupWindow) {
+      popupWindow.hide();
+    }
+    await openSessionForProjectWithId(projectPath, sessionId);
+  });
+
   // Terminal IPC handlers
   ipcMain.on('pty-input', (event, data: string) => {
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
@@ -642,6 +678,78 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
     }
 
     terminalWindow.closeTerminalWindow(sessionId);
+  });
+}
+
+async function openSessionForProjectWithId(projectPath: string, sessionId: string): Promise<void> {
+  const claudePath = findClaudeBinary();
+  if (!claudePath) {
+    dialog.showErrorBox(
+      'Claude not found',
+      'Could not find the claude CLI. Please ensure claude is installed and accessible.'
+    );
+    return;
+  }
+
+  const projects = store.getProjects();
+  const project = projects.find((p) => p.path === projectPath);
+  const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
+
+  log.info('[open-session-by-id] resuming session:', sessionId, 'in project:', projectPath);
+  const { id: newSessionId } = pty.spawnClaude(projectPath, claudePath, { resumeSessionId: sessionId });
+  log.info('[open-session-by-id] spawned with internal sessionId:', newSessionId);
+
+  const win = terminalWindow.createTerminalWindow({
+    sessionId: newSessionId,
+    projectName,
+    projectPath,
+    hasBeads: project?.hasBeads,
+    hasGit: project?.hasGit,
+    hasGithub: project?.hasGithub,
+    onClose: () => {
+      log.info('[terminal-window] closed, cleaning up session:', newSessionId);
+      pty.killSession(newSessionId);
+      if (activeSessions[projectPath]?.sessionId === newSessionId) {
+        delete activeSessions[projectPath];
+      }
+      windowToSession.delete(win.id);
+      delete lastBellTime[newSessionId];
+      notifySessionsChanged();
+    },
+  });
+
+  activeSessions[projectPath] = { sessionId: newSessionId, windowId: win.id };
+  windowToSession.set(win.id, newSessionId);
+  notifySessionsChanged();
+
+  pty.onSessionOutput(newSessionId, (data) => {
+    const termWin = terminalWindow.getTerminalWindow(newSessionId);
+    if (termWin && !termWin.isDestroyed()) {
+      termWin.webContents.send('pty-output', data);
+
+      if (data.includes('\x07') && !termWin.isFocused()) {
+        const now = Date.now();
+        const lastTime = lastBellTime[newSessionId] || 0;
+        if (now - lastTime > BELL_DEBOUNCE_MS) {
+          lastBellTime[newSessionId] = now;
+          const iconPath = path.join(app.getAppPath(), 'assets/icon.png');
+          const notification = new Notification({
+            title: 'Cockpit',
+            body: `${projectName} needs attention`,
+            icon: iconPath,
+          });
+          notification.on('click', () => {
+            terminalWindow.focusTerminalWindow(newSessionId);
+          });
+          notification.show();
+        }
+      }
+    }
+  });
+
+  pty.onSessionExit(newSessionId, () => {
+    log.info('[pty-exit] session exited:', newSessionId);
+    terminalWindow.closeTerminalWindow(newSessionId);
   });
 }
 
