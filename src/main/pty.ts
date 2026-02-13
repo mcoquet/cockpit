@@ -87,13 +87,18 @@ const sessionStartTimes = new Map<string, number>();
 export function spawnClaude(
   projectPath: string,
   claudePath: string,
-  options?: { continueSession?: boolean }
+  options?: { continueSession?: boolean; resumeSessionId?: string }
 ): { id: string; process: IPty } {
   const id = generateSessionId();
   const fullPath = path.join(os.homedir(), projectPath);
 
-  // Use --continue flag by default to resume previous session
-  const args = options?.continueSession !== false ? ['--continue'] : [];
+  // Use --resume for specific session, --continue for most recent, or nothing for new
+  let args: string[] = [];
+  if (options?.resumeSessionId) {
+    args = ['--resume', options.resumeSessionId];
+  } else if (options?.continueSession !== false) {
+    args = ['--continue'];
+  }
 
   // Get user's full PATH (from login shell) and prepend claude's directory
   const claudeDir = path.dirname(claudePath);
