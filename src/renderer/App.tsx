@@ -255,11 +255,16 @@ export default function App() {
     if (!container) return;
 
     // Handle both project list and empty state actions
-    const items = filtered.length > 0
-      ? container.children
-      : container.querySelector('.empty-state')?.querySelectorAll('.empty-state-action');
+    let item: HTMLElement | null = null;
+    if (filtered.length > 0) {
+      // Find the .project-item inside the wrapper at selectedIndex
+      const wrapper = container.children[selectedIndex] as HTMLElement | undefined;
+      item = wrapper?.querySelector('.project-item') as HTMLElement | null;
+    } else {
+      const actions = container.querySelector('.empty-state')?.querySelectorAll('.empty-state-action');
+      item = actions?.[selectedIndex] as HTMLElement | null;
+    }
 
-    const item = items?.[selectedIndex] as HTMLElement | undefined;
     item?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex, filtered.length]);
 

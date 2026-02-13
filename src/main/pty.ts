@@ -180,9 +180,8 @@ export function killSession(id: string): void {
   const session = sessions.get(id);
   if (session) {
     session.process.kill();
-    sessions.delete(id);
-    outputListeners.delete(id);
-    exitListeners.delete(id);
+    // Don't delete listeners here - let the onExit handler clean them up
+    // so exit callbacks can still fire
   }
 }
 

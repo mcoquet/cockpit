@@ -677,6 +677,12 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
       return;
     }
 
+    // Generate summary for the session that just closed
+    const claudeSessionId = sessions.getMostRecentSessionId(projectPath, exitInfo.startTime);
+    if (claudeSessionId) {
+      sessions.generateSessionSummary(projectPath, claudeSessionId);
+    }
+
     terminalWindow.closeTerminalWindow(sessionId);
   });
 }
@@ -749,6 +755,8 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
 
   pty.onSessionExit(newSessionId, () => {
     log.info('[pty-exit] session exited:', newSessionId);
+    // Generate summary for the resumed Claude session
+    sessions.generateSessionSummary(projectPath, sessionId);
     terminalWindow.closeTerminalWindow(newSessionId);
   });
 }
