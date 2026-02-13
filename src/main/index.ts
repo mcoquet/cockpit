@@ -995,6 +995,17 @@ app.on('window-all-closed', () => {
   // Keep app running in tray
 });
 
+app.on('activate', () => {
+  // Don't steal focus from popup or settings windows
+  if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) return;
+  if (settingsWindow && !settingsWindow.isDestroyed() && settingsWindow.isFocused()) return;
+
+  // Defer focus to allow Space transition to complete on macOS
+  setImmediate(() => {
+    terminalWindow.focusLastTerminalWindow();
+  });
+});
+
 // Confirm quit if active sessions exist
 let isQuitting = false;
 app.on('before-quit', async (event) => {
