@@ -12,6 +12,12 @@ export interface ActiveSession {
   windowId: number;
 }
 
+export interface SessionInfo {
+  sessionId: string;
+  lastModified: number; // Unix timestamp for easy serialization
+  lastUserMessage: string | null;
+}
+
 export type ExternalTerminal = 'terminal' | 'iterm' | 'warp' | 'kitty' | `custom:${string}`;
 
 export interface AppSettings {
@@ -66,6 +72,10 @@ export interface CockpitAPI {
   getClaudeStats?: () => Promise<ClaudeStats>;
   getServiceStatus?: () => Promise<ServiceStatus>;
   onFocusSearch: (callback: () => void) => void;
+  getProjectSessions: (path: string, limit?: number, offset?: number) => Promise<SessionInfo[]>;
+  deleteSession: (path: string, sessionId: string) => Promise<boolean>;
+  openSessionById: (path: string, sessionId: string) => Promise<void>;
+  hasSessionHistory: (path: string) => Promise<boolean>;
 }
 
 export interface ContextMenuOptions {
