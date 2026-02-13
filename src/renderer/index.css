@@ -414,3 +414,75 @@ body.dev .app {
   font-weight: 500;
   color: #e0e0e0;
 }
+
+/* Session History Styles */
+.project-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.expand-triangle {
+  display: inline-block;
+  width: 16px;
+  font-size: 10px;
+  color: #888;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.expand-triangle:hover {
+  color: #fff;
+}
+
+.expand-triangle.expanded {
+  transform: rotate(90deg);
+}
+
+.session-list {
+  margin-left: 24px;
+  border-left: 1px solid #333;
+  padding-left: 8px;
+  margin-bottom: 4px;
+}
+
+.session-item {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.session-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.session-date {
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.session-message {
+  color: #ccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.show-more-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.show-more-btn:hover {
+  color: #fff;
+}
