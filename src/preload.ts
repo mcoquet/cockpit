@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions, SessionInfo } from './shared/types';
+import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions, SessionInfo, Schedule, ScheduleRun } from './shared/types';
 
 const cockpitApi: CockpitAPI = {
   getProjects: () => ipcRenderer.invoke('get-projects'),
@@ -36,6 +36,26 @@ const cockpitApi: CockpitAPI = {
     ipcRenderer.invoke('delete-session', path, sessionId),
   openSessionById: (path: string, sessionId: string): Promise<void> =>
     ipcRenderer.invoke('open-session-by-id', path, sessionId),
+
+  // Scheduler
+  listSchedules: (projectPath?: string) =>
+    ipcRenderer.invoke('scheduler:list', projectPath),
+  getSchedule: (id: string) =>
+    ipcRenderer.invoke('scheduler:get', id),
+  createSchedule: (data: Omit<Schedule, 'id' | 'createdAt' | 'updatedAt'>) =>
+    ipcRenderer.invoke('scheduler:create', data),
+  updateSchedule: (id: string, updates: Partial<Schedule>) =>
+    ipcRenderer.invoke('scheduler:update', id, updates),
+  deleteSchedule: (id: string) =>
+    ipcRenderer.invoke('scheduler:delete', id),
+  pauseSchedule: (id: string) =>
+    ipcRenderer.invoke('scheduler:pause', id),
+  resumeSchedule: (id: string) =>
+    ipcRenderer.invoke('scheduler:resume', id),
+  triggerSchedule: (id: string) =>
+    ipcRenderer.invoke('scheduler:trigger', id),
+  getScheduleHistory: (id: string, limit?: number) =>
+    ipcRenderer.invoke('scheduler:history', id, limit),
 };
 
 const terminalApi: TerminalAPI = {

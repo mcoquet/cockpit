@@ -76,6 +76,17 @@ export interface CockpitAPI {
   deleteSession: (path: string, sessionId: string) => Promise<boolean>;
   openSessionById: (path: string, sessionId: string) => Promise<void>;
   hasSessionHistory: (path: string) => Promise<boolean>;
+
+  // Scheduler
+  listSchedules: (projectPath?: string) => Promise<Schedule[]>;
+  getSchedule: (id: string) => Promise<Schedule | null>;
+  createSchedule: (data: Omit<Schedule, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Schedule>;
+  updateSchedule: (id: string, updates: Partial<Schedule>) => Promise<Schedule | null>;
+  deleteSchedule: (id: string) => Promise<boolean>;
+  pauseSchedule: (id: string) => Promise<void>;
+  resumeSchedule: (id: string) => Promise<void>;
+  triggerSchedule: (id: string) => Promise<ScheduleRun | null>;
+  getScheduleHistory: (id: string, limit?: number) => Promise<ScheduleRun[]>;
 }
 
 export interface ContextMenuOptions {
