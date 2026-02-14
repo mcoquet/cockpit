@@ -10,8 +10,10 @@ import { requestPermission } from './permissions';
 import * as settings from './settings';
 import { getClaudeStats } from './claude-stats';
 import * as sessions from './sessions';
+import * as scheduler from './scheduler';
+import * as schedulerExecutor from './scheduler-executor';
 import type { AppSettings } from '../shared/types';
-import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions } from '../shared/types';
+import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule } from '../shared/types';
 
 let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
@@ -516,6 +518,47 @@ function registerIpcHandlers(): void {
       menu.popup();
     }
   });
+
+  // Scheduler IPC handlers
+  ipcMain.handle('scheduler:list', (_event, projectPath?: string) =>
+    scheduler.listSchedules(projectPath)
+  );
+
+  ipcMain.handle('scheduler:get', (_event, id: string) =>
+    scheduler.getSchedule(id)
+  );
+
+  ipcMain.handle('scheduler:create', (_event, data: Omit<Schedule, 'id' | 'createdAt' | 'updatedAt'>) =>
+    scheduler.createSchedule(data)
+  );
+
+  ipcMain.handle('scheduler:update', (_event, id: string, updates: Partial<Schedule>) =>
+    scheduler.updateSchedule(id, updates)
+  );
+
+  ipcMain.handle('scheduler:delete', (_event, id: string) =>
+    scheduler.deleteSchedule(id)
+  );
+
+  ipcMain.handle('scheduler:pause', (_event, id: string) => {
+    scheduler.pauseSchedule(id);
+  });
+
+  ipcMain.handle('scheduler:resume', (_event, id: string) => {
+    scheduler.resumeSchedule(id);
+  });
+
+  ipcMain.handle('scheduler:trigger', (_event, id: string) =>
+    scheduler.triggerNow(id)
+  );
+
+  ipcMain.handle('scheduler:history', (_event, id: string, limit?: number) =>
+    scheduler.getRunHistory(id, limit)
+  );
+
+  ipcMain.handle('scheduler:queued', (_event, id: string) =>
+    scheduler.getQueuedRuns(id)
+  );
 }
 
 function registerGlobalShortcuts(): void {
@@ -971,6 +1014,21 @@ app.whenReady().then(() => {
   // Watch for Homebrew upgrades
   watchForUpgrade();
 
+  // Initialize scheduler
+  schedulerExecutor.setOpenSessionFn(async (projectPath: string, prompt: string) => {
+    await openSessionForProject(projectPath, true);
+    // Wait a moment for session to be ready, then send prompt
+    setTimeout(() => {
+      const session = activeSessions[projectPath];
+      if (session) {
+        pty.writeToSession(session.sessionId, prompt + '\n');
+      }
+    }, 2000);
+  });
+
+  scheduler.setExecutor(schedulerExecutor.executeSchedule);
+  scheduler.initializeScheduler();
+
   // Auto-restore sessions after upgrade restart
   if (store.getUpgradeRestart()) {
     store.setUpgradeRestart(false);
@@ -989,6 +1047,7 @@ app.whenReady().then(() => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  scheduler.shutdownScheduler();
 });
 
 app.on('window-all-closed', () => {
