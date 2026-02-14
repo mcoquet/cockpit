@@ -515,8 +515,8 @@ body.dev .app {
 }
 
 .editor-panel-large {
-  width: 400px;
-  max-height: 500px;
+  width: 420px;
+  max-height: 80vh;
   overflow-y: auto;
 }
 
@@ -651,4 +651,129 @@ body.dev .app {
   gap: 6px;
   font-size: 12px;
   color: #888;
+}
+
+/* Natural language input */
+.nl-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.nl-input-row textarea {
+  flex: 1;
+  background: #333;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 8px;
+  border-radius: 4px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.nl-input-row textarea:focus {
+  border-color: #0a84ff;
+  outline: none;
+}
+
+.interpret-btn {
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  min-width: 44px;
+  height: 44px;
+  transition: opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.interpret-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.interpret-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.interpret-btn.loading {
+  pointer-events: none;
+}
+
+.interpret-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.interpreting-message {
+  color: #888;
+  font-size: 12px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.interpreting-message .interpret-spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+  border-color: rgba(136, 136, 136, 0.3);
+  border-top-color: #888;
+}
+
+.interpret-error {
+  color: #ff453a;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+/* Schedule preview */
+.schedule-preview {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.preview-row:last-child {
+  border-bottom: none;
+}
+
+.preview-label {
+  color: #888;
+  font-size: 12px;
+}
+
+.preview-value {
+  color: #fff;
+  font-size: 13px;
+  text-align: right;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

@@ -87,6 +87,7 @@ export interface CockpitAPI {
   resumeSchedule: (id: string) => Promise<void>;
   triggerSchedule: (id: string) => Promise<ScheduleRun | null>;
   getScheduleHistory: (id: string, limit?: number) => Promise<ScheduleRun[]>;
+  interpretSchedule: (input: string) => Promise<ParsedSchedule>;
 }
 
 export interface ContextMenuOptions {
@@ -126,6 +127,16 @@ export interface ScheduleRun {
   completedAt?: number;
   status: 'queued' | 'running' | 'success' | 'failed';
   error?: string;
+}
+
+export interface ParsedSchedule {
+  cron: string;
+  cronHuman: string;
+  prompt: string;
+  mode: 'interactive' | 'headless';
+  queueBehavior: 'skip' | 'queue' | 'parallel';
+  catchUp: boolean;
+  name: string;
 }
 
 declare global {

@@ -559,6 +559,10 @@ function registerIpcHandlers(): void {
   ipcMain.handle('scheduler:queued', (_event, id: string) =>
     scheduler.getQueuedRuns(id)
   );
+
+  ipcMain.handle('scheduler:interpret', (_event, input: string) =>
+    schedulerExecutor.interpretSchedule(input)
+  );
 }
 
 function registerGlobalShortcuts(): void {
