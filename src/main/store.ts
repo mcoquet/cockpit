@@ -1,7 +1,7 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import type { Project } from '../shared/types';
+import type { Project, Schedule, ScheduleRun } from '../shared/types';
 
 // Use require for electron-store due to ESM/CJS compatibility
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -12,6 +12,8 @@ interface StoreSchema {
   projects: Project[];
   previousSession: string[];
   upgradeRestart: boolean;
+  schedules: Schedule[];
+  scheduleRuns: ScheduleRun[];
 }
 
 const store = new Store({
@@ -20,6 +22,8 @@ const store = new Store({
     projects: [] as Project[],
     previousSession: [] as string[],
     upgradeRestart: false,
+    schedules: [] as Schedule[],
+    scheduleRuns: [] as ScheduleRun[],
   },
 }) as {
   get: <K extends keyof StoreSchema>(key: K) => StoreSchema[K];
@@ -118,4 +122,61 @@ export function setUpgradeRestart(value: boolean): void {
 
 export function getUpgradeRestart(): boolean {
   return store.get('upgradeRestart') || false;
+}
+
+// Schedule storage functions
+
+export function getSchedules(): Schedule[] {
+  return store.get('schedules') as Schedule[];
+}
+
+export function getSchedulesByProject(projectPath: string): Schedule[] {
+  return getSchedules().filter((s) => s.projectPath === projectPath);
+}
+
+export function getSchedule(id: string): Schedule | null {
+  return getSchedules().find((s) => s.id === id) || null;
+}
+
+export function saveSchedule(schedule: Schedule): Schedule {
+  const schedules = getSchedules();
+  const index = schedules.findIndex((s) => s.id === schedule.id);
+  if (index >= 0) {
+    schedules[index] = schedule;
+  } else {
+    schedules.push(schedule);
+  }
+  store.set('schedules', schedules);
+  return schedule;
+}
+
+export function deleteSchedule(id: string): boolean {
+  const schedules = getSchedules();
+  const filtered = schedules.filter((s) => s.id !== id);
+  if (filtered.length === schedules.length) return false;
+  store.set('schedules', filtered);
+  // Also delete associated runs
+  const runs = getScheduleRuns();
+  store.set('scheduleRuns', runs.filter((r) => r.scheduleId !== id));
+  return true;
+}
+
+export function getScheduleRuns(scheduleId?: string, limit = 100): ScheduleRun[] {
+  const runs = store.get('scheduleRuns') as ScheduleRun[];
+  const filtered = scheduleId ? runs.filter((r) => r.scheduleId === scheduleId) : runs;
+  return filtered.slice(-limit);
+}
+
+export function saveScheduleRun(run: ScheduleRun): ScheduleRun {
+  const runs = store.get('scheduleRuns') as ScheduleRun[];
+  const index = runs.findIndex((r) => r.id === run.id);
+  if (index >= 0) {
+    runs[index] = run;
+  } else {
+    runs.push(run);
+  }
+  // Cap at 1000 runs total
+  const capped = runs.slice(-1000);
+  store.set('scheduleRuns', capped);
+  return run;
 }
