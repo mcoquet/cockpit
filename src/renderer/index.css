@@ -492,3 +492,163 @@ body.dev .app {
 .show-more-btn:hover {
   color: #fff;
 }
+
+/* Editor tabs */
+.editor-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.editor-tab {
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.editor-tab.active {
+  color: #fff;
+  border-bottom-color: #0a84ff;
+}
+
+.editor-panel-large {
+  width: 400px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Schedules tab */
+.schedules-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.schedule-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.schedule-item.disabled {
+  opacity: 0.5;
+}
+
+.schedule-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.schedule-name {
+  font-weight: 500;
+}
+
+.schedule-cron {
+  font-size: 11px;
+  color: #888;
+  font-family: monospace;
+}
+
+.schedule-mode {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  width: fit-content;
+}
+
+.schedule-mode.interactive {
+  background: #0a84ff33;
+  color: #0a84ff;
+}
+
+.schedule-mode.headless {
+  background: #ff9f0a33;
+  color: #ff9f0a;
+}
+
+.schedule-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.schedule-actions button {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #ccc;
+}
+
+.schedule-actions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.empty-schedules {
+  color: #666;
+  text-align: center;
+  padding: 20px;
+}
+
+.add-schedule-btn {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(10, 132, 255, 0.2);
+  border: none;
+  border-radius: 4px;
+  color: #0a84ff;
+  cursor: pointer;
+}
+
+.add-schedule-btn:hover {
+  background: rgba(10, 132, 255, 0.3);
+}
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-form textarea {
+  background: #333;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 8px;
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.schedule-form select {
+  background: #333;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.editor-field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.editor-field-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #888;
+}
