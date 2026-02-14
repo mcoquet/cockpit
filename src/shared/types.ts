@@ -93,6 +93,30 @@ export interface TerminalAPI {
   showContextMenu: (options: ContextMenuOptions) => void;
 }
 
+// Scheduler types
+export interface Schedule {
+  id: string;
+  projectPath: string;
+  name: string;
+  cron: string;
+  enabled: boolean;
+  mode: 'interactive' | 'headless';
+  prompt: string;
+  catchUp: boolean;
+  queueBehavior: 'skip' | 'queue' | 'parallel';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ScheduleRun {
+  id: string;
+  scheduleId: string;
+  startedAt: number;
+  completedAt?: number;
+  status: 'queued' | 'running' | 'success' | 'failed';
+  error?: string;
+}
+
 declare global {
   interface Window {
     cockpit: CockpitAPI;
