@@ -61,6 +61,10 @@ const cockpitApi: CockpitAPI = {
   onScheduleRunOutput: (callback: (data: { runId: string; chunk: string }) => void) => {
     ipcRenderer.on('schedule-run-output', (_event, data) => callback(data));
   },
+  deleteScheduleRun: (runId: string) =>
+    ipcRenderer.invoke('scheduler:delete-run', runId),
+  clearScheduleHistory: (scheduleId: string) =>
+    ipcRenderer.invoke('scheduler:clear-history', scheduleId),
 };
 
 const terminalApi: TerminalAPI = {

@@ -563,6 +563,14 @@ function registerIpcHandlers(): void {
   ipcMain.handle('scheduler:interpret', (_event, input: string) =>
     schedulerExecutor.interpretSchedule(input)
   );
+
+  ipcMain.handle('scheduler:delete-run', (_event, runId: string) =>
+    store.deleteScheduleRun(runId)
+  );
+
+  ipcMain.handle('scheduler:clear-history', (_event, scheduleId: string) =>
+    store.clearScheduleHistory(scheduleId)
+  );
 }
 
 function registerGlobalShortcuts(): void {
