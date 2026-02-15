@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Project, Schedule, ParsedSchedule } from '../shared/types';
+import type { Project, Schedule, ParsedSchedule, ScheduleRun } from '../shared/types';
 
 interface Props {
   project: Project;
@@ -35,9 +35,25 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
   const [schedCatchUp, setSchedCatchUp] = useState(false);
   const [schedEnabled, setSchedEnabled] = useState(true);
 
+  // Running state and history
+  const [runningSchedules, setRunningSchedules] = useState<Set<string>>(new Set());
+  const [expandedSchedule, setExpandedSchedule] = useState<string | null>(null);
+  const [runHistory, setRunHistory] = useState<Record<string, ScheduleRun[]>>({});
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [liveOutput, setLiveOutput] = useState<Record<string, string>>({});
+
   useEffect(() => {
     loadSchedules();
   }, [project.path]);
+
+  useEffect(() => {
+    window.cockpit.onScheduleRunOutput(({ runId, chunk }) => {
+      setLiveOutput(prev => ({
+        ...prev,
+        [runId]: (prev[runId] || '') + chunk,
+      }));
+    });
+  }, []);
 
   async function loadSchedules() {
     const list = await window.cockpit.listSchedules(project.path);
@@ -148,7 +164,62 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
   }
 
   async function handleTriggerSchedule(id: string) {
-    await window.cockpit.triggerSchedule(id);
+    setRunningSchedules((prev) => new Set(prev).add(id));
+    try {
+      await window.cockpit.triggerSchedule(id);
+      // Refresh history after run completes
+      await loadRunHistory(id);
+    } finally {
+      setRunningSchedules((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
+  async function loadRunHistory(id: string) {
+    const history = await window.cockpit.getScheduleHistory(id, 10);
+    setRunHistory((prev) => ({ ...prev, [id]: history }));
+  }
+
+  async function toggleScheduleExpanded(id: string) {
+    if (expandedSchedule === id) {
+      setExpandedSchedule(null);
+    } else {
+      setExpandedSchedule(id);
+      if (!runHistory[id]) {
+        await loadRunHistory(id);
+      }
+    }
+  }
+
+  async function handleDeleteRun(runId: string) {
+    await window.cockpit.deleteScheduleRun(runId);
+    if (expandedSchedule) {
+      await loadRunHistory(expandedSchedule);
+    }
+    setSelectedRunId(null);
+  }
+
+  function formatRunTime(timestamp: number): string {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function getStatusIcon(status: ScheduleRun['status']): string {
+    switch (status) {
+      case 'success': return '✓';
+      case 'failed': return '✗';
+      case 'running': return '⟳';
+      case 'queued': return '◷';
+      default: return '?';
+    }
   }
 
   function handleSave() {
@@ -198,20 +269,69 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                     <div className="empty-schedules">No schedules configured</div>
                   ) : (
                     schedules.map((schedule) => (
-                      <div key={schedule.id} className={`schedule-item ${!schedule.enabled ? 'disabled' : ''}`}>
-                        <div className="schedule-info">
-                          <span className="schedule-name">{schedule.name}</span>
-                          <span className="schedule-cron">{schedule.cron}</span>
-                          <span className={`schedule-mode ${schedule.mode}`}>{schedule.mode}</span>
+                      <div key={schedule.id} className="schedule-wrapper">
+                        <div className={`schedule-item ${!schedule.enabled ? 'disabled' : ''}`}>
+                          <div className="schedule-info" onClick={() => toggleScheduleExpanded(schedule.id)} style={{ cursor: 'pointer' }}>
+                            <span className={`expand-triangle ${expandedSchedule === schedule.id ? 'expanded' : ''}`}>▶</span>
+                            <div className="schedule-details">
+                              <span className="schedule-name">{schedule.name}</span>
+                              <span className="schedule-cron">{schedule.cron}</span>
+                              <span className={`schedule-mode ${schedule.mode}`}>{schedule.mode}</span>
+                            </div>
+                          </div>
+                          <div className="schedule-actions">
+                            <button onClick={() => handleToggleEnabled(schedule)} title={schedule.enabled ? 'Pause' : 'Resume'}>
+                              {schedule.enabled ? '⏸' : '▶'}
+                            </button>
+                            <button
+                              onClick={() => handleTriggerSchedule(schedule.id)}
+                              title="Run Now"
+                              disabled={runningSchedules.has(schedule.id)}
+                              className={runningSchedules.has(schedule.id) ? 'running' : ''}
+                            >
+                              {runningSchedules.has(schedule.id) ? <span className="trigger-spinner" /> : '⚡'}
+                            </button>
+                            <button onClick={() => handleEditSchedule(schedule)} title="Edit">✎</button>
+                            <button onClick={() => handleDeleteSchedule(schedule.id)} title="Delete">✕</button>
+                          </div>
                         </div>
-                        <div className="schedule-actions">
-                          <button onClick={() => handleToggleEnabled(schedule)} title={schedule.enabled ? 'Pause' : 'Resume'}>
-                            {schedule.enabled ? '⏸' : '▶'}
-                          </button>
-                          <button onClick={() => handleTriggerSchedule(schedule.id)} title="Run Now">⚡</button>
-                          <button onClick={() => handleEditSchedule(schedule)} title="Edit">✎</button>
-                          <button onClick={() => handleDeleteSchedule(schedule.id)} title="Delete">✕</button>
-                        </div>
+                        {expandedSchedule === schedule.id && (
+                          <div className="run-history">
+                            {!runHistory[schedule.id] ? (
+                              <div className="run-history-loading">Loading...</div>
+                            ) : runHistory[schedule.id].length === 0 ? (
+                              <div className="run-history-empty">No runs yet</div>
+                            ) : (
+                              runHistory[schedule.id].map((run) => (
+                                <div key={run.id}>
+                                  <div
+                                    className={`run-item run-${run.status} ${selectedRunId === run.id ? 'selected' : ''}`}
+                                    onClick={() => setSelectedRunId(selectedRunId === run.id ? null : run.id)}
+                                  >
+                                    <span className="run-status">{getStatusIcon(run.status)}</span>
+                                    <span className="run-time">{formatRunTime(run.startedAt)}</span>
+                                    {run.completedAt && (
+                                      <span className="run-duration">
+                                        {Math.round((run.completedAt - run.startedAt) / 1000)}s
+                                      </span>
+                                    )}
+                                    {run.error && <span className="run-error" title={run.error}>error</span>}
+                                    <button
+                                      className="run-delete"
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteRun(run.id); }}
+                                      title="Delete run"
+                                    >✕</button>
+                                  </div>
+                                  {selectedRunId === run.id && (
+                                    <div className="run-output">
+                                      <pre>{liveOutput[run.id] || run.output || 'No output'}</pre>
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
