@@ -88,6 +88,7 @@ export interface CockpitAPI {
   triggerSchedule: (id: string) => Promise<ScheduleRun | null>;
   getScheduleHistory: (id: string, limit?: number) => Promise<ScheduleRun[]>;
   interpretSchedule: (input: string) => Promise<ParsedSchedule>;
+  onScheduleRunOutput: (callback: (data: { runId: string; chunk: string }) => void) => void;
 }
 
 export interface ContextMenuOptions {

@@ -58,6 +58,9 @@ const cockpitApi: CockpitAPI = {
     ipcRenderer.invoke('scheduler:history', id, limit),
   interpretSchedule: (input: string) =>
     ipcRenderer.invoke('scheduler:interpret', input),
+  onScheduleRunOutput: (callback: (data: { runId: string; chunk: string }) => void) => {
+    ipcRenderer.on('schedule-run-output', (_event, data) => callback(data));
+  },
 };
 
 const terminalApi: TerminalAPI = {
