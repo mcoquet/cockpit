@@ -777,3 +777,155 @@ body.dev .app {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Schedule wrapper for expandable items */
+.schedule-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-item .schedule-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-item .schedule-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.schedule-item .expand-triangle {
+  font-size: 8px;
+  transition: transform 0.15s ease;
+}
+
+.schedule-item .expand-triangle.expanded {
+  transform: rotate(90deg);
+}
+
+/* Running trigger button */
+.schedule-actions button.running {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.trigger-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Run history */
+.run-history {
+  margin-left: 24px;
+  padding: 8px 0;
+  border-left: 1px solid #333;
+  padding-left: 12px;
+  margin-top: 4px;
+}
+
+.run-history-loading,
+.run-history-empty {
+  font-size: 11px;
+  color: #666;
+  padding: 4px 0;
+}
+
+.run-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.run-item.selected {
+  background: rgba(10, 132, 255, 0.2);
+}
+
+.run-status {
+  width: 16px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.run-item.run-success .run-status {
+  color: #30d158;
+}
+
+.run-item.run-failed .run-status {
+  color: #ff453a;
+}
+
+.run-item.run-running .run-status {
+  color: #0a84ff;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.run-item.run-queued .run-status {
+  color: #888;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.run-time {
+  color: #888;
+}
+
+.run-duration {
+  color: #666;
+  font-family: monospace;
+}
+
+.run-error {
+  color: #ff453a;
+  font-size: 10px;
+  cursor: help;
+}
+
+.run-delete {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 2px 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.run-item:hover .run-delete {
+  opacity: 1;
+}
+
+.run-delete:hover {
+  color: #ff453a;
+}
+
+.run-output {
+  background: #1a1a1a;
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.run-output pre {
+  margin: 0;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 11px;
+  color: #ccc;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
