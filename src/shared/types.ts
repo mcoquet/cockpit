@@ -89,6 +89,7 @@ export interface CockpitAPI {
   getScheduleHistory: (id: string, limit?: number) => Promise<ScheduleRun[]>;
   interpretSchedule: (input: string) => Promise<ParsedSchedule>;
   onScheduleRunOutput: (callback: (data: { runId: string; chunk: string }) => void) => void;
+  onScheduleRunStarted: (callback: (run: ScheduleRun) => void) => void;
   deleteScheduleRun: (runId: string) => Promise<boolean>;
   clearScheduleHistory: (scheduleId: string) => Promise<number>;
 }

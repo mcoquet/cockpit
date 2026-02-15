@@ -1,5 +1,6 @@
 import cron, { ScheduledTask } from 'node-cron';
 import { v4 as uuidv4 } from 'uuid';
+import { BrowserWindow } from 'electron';
 import * as store from './store';
 import type { Schedule, ScheduleRun } from '../shared/types';
 
@@ -163,6 +164,11 @@ async function runTask(schedule: Schedule, run: ScheduleRun): Promise<ScheduleRu
   run.startedAt = Date.now();
   store.saveScheduleRun(run);
   runningTasks.set(schedule.id, run);
+
+  // Notify UI that a run has started
+  BrowserWindow.getAllWindows().forEach(win => {
+    win.webContents.send('schedule-run-started', run);
+  });
 
   try {
     if (!executor) {

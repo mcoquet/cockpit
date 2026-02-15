@@ -55,6 +55,17 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
     });
   }, []);
 
+  useEffect(() => {
+    window.cockpit.onScheduleRunStarted((run) => {
+      // Add the new running task to history and auto-expand it
+      setRunHistory(prev => ({
+        ...prev,
+        [run.scheduleId]: [run, ...(prev[run.scheduleId] || [])],
+      }));
+      setSelectedRunId(run.id);
+    });
+  }, []);
+
   async function loadSchedules() {
     const list = await window.cockpit.listSchedules(project.path);
     setSchedules(list);

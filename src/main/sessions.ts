@@ -6,6 +6,7 @@ import { app } from 'electron';
 import log from 'electron-log';
 import type { SessionInfo } from '../shared/types';
 import { findClaudeBinary } from './claude';
+import { getClaudeSpawnEnv } from './env';
 
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 
@@ -171,7 +172,7 @@ export function generateSessionSummary(projectPath: string, claudeSessionId: str
 
   const child = spawn(claudePath, ['--model', 'haiku', '--print'], {
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env },
+    env: getClaudeSpawnEnv(claudePath),
   });
 
   // Write prompt to stdin and close it
