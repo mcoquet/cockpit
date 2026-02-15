@@ -180,3 +180,20 @@ export function saveScheduleRun(run: ScheduleRun): ScheduleRun {
   store.set('scheduleRuns', capped);
   return run;
 }
+
+export function deleteScheduleRun(runId: string): boolean {
+  const runs = store.get('scheduleRuns') as ScheduleRun[];
+  const index = runs.findIndex((r) => r.id === runId);
+  if (index === -1) return false;
+  runs.splice(index, 1);
+  store.set('scheduleRuns', runs);
+  return true;
+}
+
+export function clearScheduleHistory(scheduleId: string): number {
+  const runs = store.get('scheduleRuns') as ScheduleRun[];
+  const filtered = runs.filter((r) => r.scheduleId !== scheduleId);
+  const deleted = runs.length - filtered.length;
+  store.set('scheduleRuns', filtered);
+  return deleted;
+}
