@@ -127,6 +127,7 @@ export interface ScheduleRun {
   completedAt?: number;
   status: 'queued' | 'running' | 'success' | 'failed';
   error?: string;
+  output?: string;
 }
 
 export interface ParsedSchedule {
