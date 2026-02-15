@@ -1,6 +1,6 @@
 {
   "name": "cockpit",
-  "version": "0.7.11",
+  "version": "0.8.0",
   "description": "Claude Code project manager for macOS",
   "main": "dist/main/main/index.js",
   "scripts": {
