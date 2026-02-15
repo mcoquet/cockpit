@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import type { Schedule } from '../shared/types';
 import { findClaudeBinary } from './claude';
+import { getClaudeSpawnEnv } from './env';
 
 export interface ParsedSchedule {
   cron: string;
@@ -21,16 +22,24 @@ export function setOpenSessionFn(fn: (projectPath: string, prompt: string) => Pr
   openSessionFn = fn;
 }
 
-export async function executeSchedule(schedule: Schedule): Promise<void> {
-  const expandedPath = schedule.projectPath.startsWith('~')
-    ? path.join(os.homedir(), schedule.projectPath.slice(1))
-    : schedule.projectPath;
+export async function executeSchedule(schedule: Schedule): Promise<string> {
+  // Expand path: handle ~, relative paths, and absolute paths
+  let expandedPath: string;
+  if (schedule.projectPath.startsWith('~')) {
+    expandedPath = path.join(os.homedir(), schedule.projectPath.slice(1));
+  } else if (path.isAbsolute(schedule.projectPath)) {
+    expandedPath = schedule.projectPath;
+  } else {
+    // Relative path - prepend home directory
+    expandedPath = path.join(os.homedir(), schedule.projectPath);
+  }
 
   if (schedule.mode === 'interactive') {
     if (!openSessionFn) {
       throw new Error('openSessionFn not set');
     }
     await openSessionFn(schedule.projectPath, schedule.prompt);
+    return '';
   } else {
     // Headless execution
     const claudePath = findClaudeBinary();
@@ -38,25 +47,32 @@ export async function executeSchedule(schedule: Schedule): Promise<void> {
       throw new Error('Claude binary not found');
     }
 
+    let output = '';
+
     return new Promise((resolve, reject) => {
       const child = spawn(claudePath, ['-p', schedule.prompt], {
         cwd: expandedPath,
-        stdio: 'ignore',
+        stdio: ['ignore', 'pipe', 'pipe'],
         detached: true,
+        env: getClaudeSpawnEnv(claudePath),
+      });
+
+      child.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.stderr.on('data', (data) => {
+        output += data.toString();
       });
 
       child.on('error', reject);
       child.on('exit', (code) => {
         if (code === 0) {
-          resolve();
+          resolve(output);
         } else {
-          reject(new Error(`Claude exited with code ${code}`));
+          reject(new Error(`Claude exited with code ${code}\n${output}`));
         }
       });
-
-      // Don't wait for detached process
-      child.unref();
-      resolve();
     });
   }
 }
@@ -90,6 +106,7 @@ Parse this request: "${input}"`;
   return new Promise((resolve, reject) => {
     const child = spawn(claudePath, ['--print', '--model', 'haiku', '-p', '-'], {
       timeout: 30000,
+      env: getClaudeSpawnEnv(claudePath),
     });
 
     let stdout = '';
