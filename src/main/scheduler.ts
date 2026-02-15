@@ -13,9 +13,9 @@ const runQueues = new Map<string, ScheduleRun[]>();
 const runningTasks = new Map<string, ScheduleRun>();
 
 // Executor function - will be set by index.ts
-let executor: ((schedule: Schedule) => Promise<string>) | null = null;
+let executor: ((schedule: Schedule, runId: string) => Promise<string>) | null = null;
 
-export function setExecutor(fn: (schedule: Schedule) => Promise<string>): void {
+export function setExecutor(fn: (schedule: Schedule, runId: string) => Promise<string>): void {
   executor = fn;
 }
 
@@ -168,7 +168,7 @@ async function runTask(schedule: Schedule, run: ScheduleRun): Promise<ScheduleRu
     if (!executor) {
       throw new Error('Executor not set');
     }
-    const output = await executor(schedule);
+    const output = await executor(schedule, run.id);
     run.status = 'success';
     run.output = output;
   } catch (err) {

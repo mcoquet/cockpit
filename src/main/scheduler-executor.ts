@@ -17,12 +17,17 @@ export interface ParsedSchedule {
 
 // These will be injected from index.ts
 let openSessionFn: ((projectPath: string, prompt: string) => Promise<void>) | null = null;
+let outputCallback: ((runId: string, chunk: string) => void) | null = null;
 
 export function setOpenSessionFn(fn: (projectPath: string, prompt: string) => Promise<void>): void {
   openSessionFn = fn;
 }
 
-export async function executeSchedule(schedule: Schedule): Promise<string> {
+export function setOutputCallback(fn: (runId: string, chunk: string) => void): void {
+  outputCallback = fn;
+}
+
+export async function executeSchedule(schedule: Schedule, runId: string): Promise<string> {
   // Expand path: handle ~, relative paths, and absolute paths
   let expandedPath: string;
   if (schedule.projectPath.startsWith('~')) {
@@ -58,11 +63,19 @@ export async function executeSchedule(schedule: Schedule): Promise<string> {
       });
 
       child.stdout.on('data', (data) => {
-        output += data.toString();
+        const chunk = data.toString();
+        output += chunk;
+        if (outputCallback) {
+          outputCallback(runId, chunk);
+        }
       });
 
       child.stderr.on('data', (data) => {
-        output += data.toString();
+        const chunk = data.toString();
+        output += chunk;
+        if (outputCallback) {
+          outputCallback(runId, chunk);
+        }
       });
 
       child.on('error', reject);

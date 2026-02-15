@@ -1030,6 +1030,12 @@ app.whenReady().then(() => {
     }, 2000);
   });
 
+  schedulerExecutor.setOutputCallback((runId, chunk) => {
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('schedule-run-output', { runId, chunk });
+    });
+  });
+
   scheduler.setExecutor(schedulerExecutor.executeSchedule);
   scheduler.initializeScheduler();
 
