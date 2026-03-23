@@ -2,7 +2,6 @@ export interface Project {
   path: string;
   name?: string;
   description?: string;
-  hasBeads?: boolean;
   hasGit?: boolean;
   hasGithub?: boolean;
 }

@@ -12,20 +12,19 @@ export interface TerminalWindowOptions {
   sessionId: string;
   projectName: string;
   projectPath: string;
-  hasBeads?: boolean;
   hasGit?: boolean;
   hasGithub?: boolean;
   onClose?: () => void;
 }
 
 export function createTerminalWindow(options: TerminalWindowOptions): BrowserWindow {
-  const { sessionId, projectName, projectPath, hasBeads, hasGit, hasGithub, onClose } = options;
+  const { sessionId, projectName, projectPath, hasGit, hasGithub, onClose } = options;
 
   // Store project path for external terminal shortcut
   terminalProjectPaths.set(sessionId, projectPath);
   // Show GitHub indicator if github remote exists, otherwise show git indicator
   const gitIndicator = hasGithub ? '🐙' : hasGit ? '⎇' : '';
-  const indicators = [gitIndicator, hasBeads ? '◆' : ''].filter(Boolean).join('');
+  const indicators = gitIndicator;
   const devSuffix = process.env.NODE_ENV === 'development' ? ' (Dev)' : '';
   const title = (indicators ? `${indicators} ${projectName}` : projectName) + devSuffix;
 
@@ -121,12 +120,12 @@ export function closeTerminalWindow(sessionId: string): void {
 export function updateTerminalWindowTitle(
   sessionId: string,
   projectName: string,
-  options?: { hasBeads?: boolean; hasGit?: boolean; hasGithub?: boolean }
+  options?: { hasGit?: boolean; hasGithub?: boolean }
 ): void {
   const win = terminalWindows.get(sessionId);
   if (win && !win.isDestroyed()) {
     const gitIndicator = options?.hasGithub ? '🐙' : options?.hasGit ? '⎇' : '';
-    const indicators = [gitIndicator, options?.hasBeads ? '◆' : ''].filter(Boolean).join('');
+    const indicators = gitIndicator;
     const title = indicators ? `${indicators} ${projectName}` : projectName;
     win.setTitle(title);
   }

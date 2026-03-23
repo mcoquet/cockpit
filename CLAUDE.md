@@ -110,8 +110,8 @@ brew update && brew info cockpit | head -1
 
 ## Workflow Rules
 
-1. **Ticket first** - Never start work without an existing issue in beads (`bd show <id>`)
-2. **Claim and plan** - Before coding: claim the ticket (`bd update <id> --status=in_progress`) and invoke appropriate superpowers skills
+1. **Ticket first** - Never start work without an existing GitHub issue (`gh issue view <number>`)
+2. **Claim and plan** - Before coding: self-assign the issue and invoke appropriate superpowers skills
 3. **No premature commits** - Make changes, then wait for user to validate
 4. **User confirms before done** - Always ask user to test before committing/pushing
 
@@ -123,23 +123,22 @@ When the user says things like:
 - "idea: ..."
 - "we should add ..."
 
-**This means: Create a beads ticket, NOT start implementation.**
+**This means: Create a GitHub issue, NOT start implementation.**
 
 ```bash
-bd create --title="<description>" --type=feature|bug|task --priority=2
+gh issue create --repo mcoquet/cockpit --title "<description>" --label "enhancement"
 ```
 
-Wait for explicit instruction to work on a ticket (e.g., "work on cockpit-xxx").
+Wait for explicit instruction to work on an issue (e.g., "work on #123").
 
 ### Correct Flow
 ```
-bd show <id>                         # Review the issue
-bd update <id> --status=in_progress  # Claim it
+gh issue view <number>               # Review the issue
 # Invoke relevant superpowers skills (see below)
 # Make code changes
 # Ask user to test (npm run dev)
 # Wait for user confirmation
-# Only then: commit, push, close issue
+# Only then: commit, push, close issue with gh issue close <number>
 ```
 
 ## Superpowers Skills

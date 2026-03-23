@@ -235,7 +235,6 @@ function registerIpcHandlers(): void {
     if (session) {
       const projectName = updatedProject.name || projectPath.split('/').pop() || 'Terminal';
       terminalWindow.updateTerminalWindowTitle(session.sessionId, projectName, {
-        hasBeads: updatedProject.hasBeads,
         hasGit: updatedProject.hasGit,
         hasGithub: updatedProject.hasGithub,
       });
@@ -668,7 +667,6 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
     sessionId,
     projectName,
     projectPath,
-    hasBeads: project?.hasBeads,
     hasGit: project?.hasGit,
     hasGithub: project?.hasGithub,
     onClose: () => {
@@ -764,7 +762,6 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
     sessionId: newSessionId,
     projectName,
     projectPath,
-    hasBeads: project?.hasBeads,
     hasGit: project?.hasGit,
     hasGithub: project?.hasGithub,
     onClose: () => {
