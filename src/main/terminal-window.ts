@@ -13,17 +13,17 @@ export interface TerminalWindowOptions {
   projectName: string;
   projectPath: string;
   hasGit?: boolean;
-  hasGithub?: boolean;
+  githubUrl?: string;
   onClose?: () => void;
 }
 
 export function createTerminalWindow(options: TerminalWindowOptions): BrowserWindow {
-  const { sessionId, projectName, projectPath, hasGit, hasGithub, onClose } = options;
+  const { sessionId, projectName, projectPath, hasGit, githubUrl, onClose } = options;
 
   // Store project path for external terminal shortcut
   terminalProjectPaths.set(sessionId, projectPath);
   // Show GitHub indicator if github remote exists, otherwise show git indicator
-  const gitIndicator = hasGithub ? '🐙' : hasGit ? '⎇' : '';
+  const gitIndicator = githubUrl ? '🐙' : hasGit ? '⎇' : '';
   const indicators = gitIndicator;
   const devSuffix = process.env.NODE_ENV === 'development' ? ' (Dev)' : '';
   const title = (indicators ? `${indicators} ${projectName}` : projectName) + devSuffix;
@@ -46,10 +46,10 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
 
   // Pass sessionId and title to renderer via query param
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}&title=${encodeURIComponent(title)}&dev=1`);
+    win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}&title=${encodeURIComponent(title)}&dev=1${githubUrl ? '&githubUrl=' + encodeURIComponent(githubUrl) : ''}`);
   } else {
     win.loadFile(path.join(__dirname, '../../renderer/terminal.html'), {
-      query: { sessionId, title },
+      query: { sessionId, title, ...(githubUrl ? { githubUrl } : {}) },
     });
   }
 
@@ -120,11 +120,11 @@ export function closeTerminalWindow(sessionId: string): void {
 export function updateTerminalWindowTitle(
   sessionId: string,
   projectName: string,
-  options?: { hasGit?: boolean; hasGithub?: boolean }
+  options?: { hasGit?: boolean; githubUrl?: string }
 ): void {
   const win = terminalWindows.get(sessionId);
   if (win && !win.isDestroyed()) {
-    const gitIndicator = options?.hasGithub ? '🐙' : options?.hasGit ? '⎇' : '';
+    const gitIndicator = options?.githubUrl ? '🐙' : options?.hasGit ? '⎇' : '';
     const indicators = gitIndicator;
     const title = indicators ? `${indicators} ${projectName}` : projectName;
     win.setTitle(title);

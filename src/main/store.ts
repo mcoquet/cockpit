@@ -35,14 +35,16 @@ function checkHasGit(projectPath: string): boolean {
   return fs.existsSync(fullPath);
 }
 
-function checkHasGithub(projectPath: string): boolean {
+function getGithubUrl(projectPath: string): string | undefined {
   const configPath = path.join(os.homedir(), projectPath, '.git', 'config');
-  if (!fs.existsSync(configPath)) return false;
+  if (!fs.existsSync(configPath)) return undefined;
   try {
     const config = fs.readFileSync(configPath, 'utf-8');
-    return config.includes('github.com');
+    const match = config.match(/url\s*=\s*(?:https:\/\/github\.com\/|git@github\.com:)([\w.-]+\/[\w.-]+?)(?:\.git)?\s*$/m);
+    if (!match) return undefined;
+    return `https://github.com/${match[1]}`;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -51,7 +53,7 @@ export function getProjects(): Project[] {
   return projects.map((p) => ({
     ...p,
     hasGit: checkHasGit(p.path),
-    hasGithub: checkHasGithub(p.path),
+    githubUrl: getGithubUrl(p.path),
   }));
 }
 

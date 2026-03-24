@@ -89,3 +89,13 @@ body.dev {
   opacity: 1;
   transition: opacity 0.15s ease;
 }
+
+.github-link {
+  -webkit-app-region: no-drag;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.github-link:hover {
+  transform: scale(1.2);
+}

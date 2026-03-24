@@ -3,7 +3,7 @@ export interface Project {
   name?: string;
   description?: string;
   hasGit?: boolean;
-  hasGithub?: boolean;
+  githubUrl?: string;
 }
 
 export interface ActiveSession {
@@ -106,6 +106,7 @@ export interface TerminalAPI {
   resize: (cols: number, rows: number) => void;
   openPath: (path: string) => void;
   showContextMenu: (options: ContextMenuOptions) => void;
+  openExternal: (url: string) => void;
 }
 
 // Scheduler types

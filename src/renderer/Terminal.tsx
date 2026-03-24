@@ -240,11 +240,26 @@ export default function Terminal() {
     };
   }, []);
 
-  const title = new URLSearchParams(window.location.search).get('title') || '';
+  const params = new URLSearchParams(window.location.search);
+  const title = params.get('title') || '';
+  const githubUrl = params.get('githubUrl');
 
   return (
     <>
-      <div className={`drag-region ${!isFocused ? 'unfocused' : ''}`}>{title}</div>
+      <div className={`drag-region ${!isFocused ? 'unfocused' : ''}`}>
+        {githubUrl ? (
+          <>
+            <span
+              className="github-link"
+              title="Open on GitHub"
+              onClick={() => window.terminal.openExternal(githubUrl)}
+            >🐙</span>
+            {' '}{title.replace(/^🐙\s*/, '')}
+          </>
+        ) : (
+          title
+        )}
+      </div>
       <div className={`terminal-wrapper ${!isFocused ? 'unfocused' : ''}`}>
         <div ref={containerRef} className="terminal-container" />
         <div className="terminal-spacer" />

@@ -92,6 +92,9 @@ const terminalApi: TerminalAPI = {
   showContextMenu: (options: ContextMenuOptions) => {
     ipcRenderer.send('terminal-context-menu', options);
   },
+  openExternal: (url: string) => {
+    ipcRenderer.send('open-external-url', url);
+  },
 };
 
 contextBridge.exposeInMainWorld('cockpit', cockpitApi);

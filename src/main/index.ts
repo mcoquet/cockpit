@@ -236,7 +236,7 @@ function registerIpcHandlers(): void {
       const projectName = updatedProject.name || projectPath.split('/').pop() || 'Terminal';
       terminalWindow.updateTerminalWindowTitle(session.sessionId, projectName, {
         hasGit: updatedProject.hasGit,
-        hasGithub: updatedProject.hasGithub,
+        githubUrl: updatedProject.githubUrl,
       });
     }
 
@@ -471,6 +471,12 @@ function registerIpcHandlers(): void {
     }
   });
 
+  ipcMain.on('open-external-url', (_event, url: string) => {
+    if (typeof url === 'string' && url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+  });
+
   // Terminal context menu (right-click on links/selection)
   ipcMain.on('terminal-context-menu', (_event, options: ContextMenuOptions) => {
     const menuItems: Electron.MenuItemConstructorOptions[] = [];
@@ -668,7 +674,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
     projectName,
     projectPath,
     hasGit: project?.hasGit,
-    hasGithub: project?.hasGithub,
+    githubUrl: project?.githubUrl,
     onClose: () => {
       log.info('[terminal-window] closed, cleaning up session:', sessionId);
       pty.killSession(sessionId);
@@ -763,7 +769,7 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
     projectName,
     projectPath,
     hasGit: project?.hasGit,
-    hasGithub: project?.hasGithub,
+    githubUrl: project?.githubUrl,
     onClose: () => {
       log.info('[terminal-window] closed, cleaning up session:', newSessionId);
       pty.killSession(newSessionId);
