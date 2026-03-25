@@ -103,7 +103,11 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
 
   win.on('closed', () => {
     if (lastFocusedTerminalId === win.id) {
-      lastFocusedTerminalId = null;
+      // Fall back to another open terminal window instead of null
+      const remaining = Array.from(terminalWindows.values()).filter(
+        w => w.id !== win.id && !w.isDestroyed()
+      );
+      lastFocusedTerminalId = remaining.length > 0 ? remaining[0].id : null;
     }
     terminalWindows.delete(sessionId);
     terminalProjectPaths.delete(sessionId);
@@ -180,6 +184,12 @@ export function getFocusedTerminalWindowId(): number | null {
         return lastFocusedTerminalId;
       }
     }
+  }
+  // Fallback: return any available terminal window
+  const windows = Array.from(terminalWindows.values()).filter(w => !w.isDestroyed());
+  if (windows.length > 0) {
+    lastFocusedTerminalId = windows[0].id;
+    return windows[0].id;
   }
   return null;
 }
