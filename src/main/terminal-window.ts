@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog } from 'electron';
+import { BrowserWindow, dialog, shell } from 'electron';
 import path from 'path';
 import os from 'os';
 import { execFile } from 'child_process';
@@ -52,6 +52,24 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
       query: { sessionId, title, ...(githubUrl ? { githubUrl } : {}) },
     });
   }
+
+  // Open links in system browser instead of Electron window
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  // Intercept in-page navigation to external URLs
+  win.webContents.on('will-navigate', (event, url) => {
+    // Allow loading the app itself
+    if (url.startsWith('http://localhost:') || url.startsWith('file://')) return;
+    event.preventDefault();
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+  });
 
   // Set title after page loads (HTML title would otherwise override)
   win.webContents.on('did-finish-load', () => {

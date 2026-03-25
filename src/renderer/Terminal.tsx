@@ -26,6 +26,11 @@ export default function Terminal() {
       cursorBlink: true,
       fontSize: 14,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      linkHandler: {
+        activate: (_event, url) => {
+          window.terminal.openExternal(url);
+        },
+      },
       theme: {
         background: '#1e1e1e',
         foreground: '#e0e0e0',
@@ -52,7 +57,9 @@ export default function Terminal() {
     });
 
     const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon();
+    const webLinksAddon = new WebLinksAddon((_event, url) => {
+      window.terminal.openExternal(url);
+    });
 
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(webLinksAddon);
