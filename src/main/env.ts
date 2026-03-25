@@ -21,7 +21,6 @@ let cachedUserPath: string | null = null;
 /**
  * Get the user's full PATH by spawning a login shell.
  * This captures paths added in .zshrc, .bash_profile, etc.
- * including fnm, nvm, and other node version managers.
  */
 export function getUserShellPath(): string {
   if (cachedUserPath !== null) {
@@ -56,7 +55,7 @@ export function getUserShellPath(): string {
 
 /**
  * Get spawn options with proper environment for running Claude CLI.
- * This ensures the PATH includes the user's shell PATH (for fnm/nvm)
+ * This ensures the PATH includes the user's shell PATH
  * and the directory containing the claude binary.
  */
 export function getClaudeSpawnEnv(claudePath: string): NodeJS.ProcessEnv {
