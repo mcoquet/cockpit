@@ -143,7 +143,7 @@ gh issue view <number>               # Review the issue
 
 ## Superpowers Skills
 
-The `obra/superpowers` plugin is installed and activates automatically via SessionStart hook. Project-specific overrides:
+The `obra/superpowers` skills are installed directly in `.claude/skills/` (committed to the repo). Project-specific outputs:
 
 - **Design docs**: `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
 - **Implementation plans**: `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
