@@ -1,4 +1,4 @@
-# Session Permissions UI - Design Doc
+# Session Permissions UI - Design Spec
 
 **Issue:** [#37](https://github.com/mcoquet/cockpit/issues/37) - Add a way to set permissions in a given session from the tray icon and from the terminal header
 
@@ -6,163 +6,195 @@
 
 ## Problem
 
-Cockpit currently spawns Claude Code sessions with no permission flags - users get the default interactive permission mode. There's no way to:
+Cockpit currently spawns Claude Code sessions with no permission flags. There's no way to:
 - Choose a permission mode when launching a session
 - See what permission mode a running session is in
-- Change permissions for a running session
+- Change permissions for a running session from Cockpit's UI
 
-Claude Code supports these permission modes via `--permission-mode`:
-| Mode | Behavior |
-|------|----------|
-| `default` | Asks for permission on each action |
-| `acceptEdits` | Auto-accepts file edits, still asks for commands |
-| `plan` | Read-only, no edits or commands |
-| `auto` | Auto-accepts most actions |
-| `bypassPermissions` | Skips all checks (requires `--allow-dangerously-skip-permissions`) |
+## Permission Modes
 
-Additionally, `--allowedTools` and `--disallowedTools` provide granular tool-level control.
+Claude Code supports 6 permission modes via `--permission-mode`:
 
-## Constraints
+| Mode | Behavior | Badge color |
+|------|----------|-------------|
+| `default` | Asks for permission on each action | *(no badge shown)* |
+| `acceptEdits` | Auto-accepts file edits, still asks for commands | Yellow |
+| `plan` | Read-only, no edits or commands | Blue |
+| `auto` | Auto-accepts most actions | Orange |
+| `dontAsk` | Accepts all actions without prompting | Red |
+| `bypassPermissions` | Skips all permission checks | Dark red |
 
-- **Permission mode is set at spawn time** via CLI flags - it cannot be changed mid-session through the CLI
-- Inside a running session, users can type `/permissions` to change the mode interactively
-- Cockpit spawns Claude via `node-pty` in `src/main/pty.ts`
+All 6 modes are exposed in the UI. Cockpit doesn't gatekeep what the CLI already offers.
 
-## Design Options
+Note: `bypassPermissions` also requires passing `--dangerously-skip-permissions` to the CLI.
 
-### Option A: Permission Mode Selector at Launch Time
+## Data Model
 
-Add a permission mode picker that's used when launching new sessions.
+### New type (`src/shared/types.ts`)
 
-**Tray/Popup UI:**
-- Add a small permission mode indicator next to each project in the popup (e.g., a shield icon or text badge)
-- Default mode configurable in Settings
-- Right-click on a project to pick a different mode before launching
-- Or: add a "mode" dropdown/toggle in the popup header that applies to the next session launched
+```typescript
+type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'auto' | 'dontAsk' | 'bypassPermissions';
+```
 
-**Terminal header:**
-- Show current permission mode as a badge in the terminal window title bar area
-- Clicking it is informational only (can't change mid-session via CLI flag)
+### Project (updated)
 
-**Pros:** Simple, clean, matches how Claude Code actually works
-**Cons:** Can't change permissions after session starts (but `/permissions` command exists for that)
-
-### Option B: Full Permission Control with Mid-Session Changes
-
-Support changing permissions in running sessions by injecting the `/permissions` command into the PTY.
-
-**Tray icon:**
-- Right-click a running session in the tray menu -> submenu with permission modes
-- Selecting one sends `/permissions` + mode selection keystrokes to the PTY
-
-**Terminal header:**
-- Add a clickable permission mode badge to the terminal chrome (above the xterm area)
-- Clicking opens a dropdown of modes; selecting one injects `/permissions` into the terminal
-
-**Pros:** Full control from any surface
-**Cons:** Fragile - depends on `/permissions` command format staying stable, needs to handle timing (what if Claude is mid-response?), injecting input feels hacky
-
-### Option C: Project-Level Permission Presets
-
-Store a default permission mode per project, applied automatically at launch.
-
-**Settings/Project config:**
-- In project settings (right-click project -> Settings), add a "Default permission mode" picker
-- Stored in `electron-store` alongside project data
-
-**Tray icon:**
-- Shows current default mode per project as a subtle indicator
-- Quick-switch via right-click submenu
-
-**Terminal header:**
-- Badge shows the mode the session was launched with
-
-**Pros:** Set-and-forget for trusted projects, good for "this project always runs in auto mode"
-**Cons:** Doesn't help with one-off permission changes
-
-### Option D: Hybrid (Recommended)
-
-Combine Options A + C: project-level defaults + per-launch override.
-
-**Data model changes:**
 ```typescript
 interface Project {
   path: string;
   name?: string;
-  // ... existing fields
-  permissionMode?: PermissionMode; // default for this project
+  description?: string;
+  hasGit?: boolean;
+  githubUrl?: string;
+  permissionMode?: PermissionMode; // NEW - per-project default, undefined = 'default'
 }
-
-type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'auto';
-// Note: bypassPermissions excluded from UI - too dangerous for a quick-click
 ```
 
-**Surface 1 - Popup window (project list):**
-- Each project row shows a small permission mode icon/badge (e.g., shield variants)
-- Modifier key behavior: hold Option+click to launch with a different mode (shows mode picker)
-- Global default mode in Settings
+### ActiveSession (updated)
 
-**Surface 2 - Tray context menu:**
-- When right-clicking the tray, active sessions show their permission mode
-- Submenu per session: "Permission Mode" -> shows current (checked) + options
-- Selecting a different mode for a running session: show tooltip "Use /permissions inside the terminal to change mode"
-
-**Surface 3 - Terminal window header:**
-- Add a permission mode badge to the terminal title bar area (the `hiddenInset` region or a custom toolbar)
-- Badge color-coded: green (default), yellow (acceptEdits), blue (plan), orange (auto)
-- Clicking the badge: for now, informational tooltip saying "Launched in X mode. Type /permissions to change."
-- Future: could inject `/permissions` command if we want
-
-**Spawn changes (`pty.ts`):**
 ```typescript
-function spawnClaude(options: {
-  projectPath: string;
-  continueSession?: boolean;
-  forceNew?: boolean;
-  resumeSessionId?: string;
-  permissionMode?: PermissionMode; // NEW
-}): string {
-  const args: string[] = [];
+interface ActiveSession {
+  sessionId: string;
+  windowId: number;
+  permissionMode: PermissionMode; // NEW - mode this session launched with
+}
+```
 
-  if (options.permissionMode && options.permissionMode !== 'default') {
-    args.push('--permission-mode', options.permissionMode);
+No global default mode setting. Permission mode is always per-project.
+
+## UI Surfaces
+
+### 1. Project Editor — Set Per-Project Default
+
+The existing ProjectEditor Details tab (right-click a project) gets a new "Permission Mode" field below Description. A `<select>` dropdown with all 6 modes:
+
+- Default (no flag)
+- Accept Edits
+- Plan (read-only)
+- Auto
+- Don't Ask
+- Bypass Permissions
+
+Saved via the existing `onSave` -> `updateProject` flow. The `permissionMode` field is stored in electron-store alongside other project data.
+
+### 2. Popup Window — Launch with Mode
+
+**Normal click:** Launches with the project's stored `permissionMode` (or `'default'` if unset). No UI interruption — same behavior as today, just now respects the stored mode.
+
+**Option+click (modifier key override):** Instead of launching immediately, the main process builds a native macOS context menu (`Menu.buildFromTemplate`) with all 6 modes. The project's current default has a checkmark. User picks a mode, and the session launches with that mode. This is a one-shot override — it does not change the project's stored default.
+
+**Implementation:**
+- The renderer detects `altKey` on the click event and sends it along with the `openSession` IPC call
+- Main process either launches directly (normal) or shows the native context menu (Option held), then launches with the selected mode
+
+### 3. Terminal Header — Badge Display
+
+A color-coded text pill appears in the drag-region of the terminal window, right-aligned relative to the project title:
+
+```
+[traffic lights]  🐙 my-project                    [auto]
+```
+
+**Display rules:**
+- Hidden when mode is `default` (reduces noise — most sessions won't show a badge)
+- Badge text uses short labels: `plan`, `edits`, `auto`, `dontAsk`, `bypass`
+- Color-coded per the table above (blue, yellow, orange, red, red)
+
+**Data flow:**
+- Permission mode is passed to the terminal window via URL params (like `title` and `githubUrl` already are)
+- Terminal reads it on load and renders the badge
+
+### 4. Terminal Badge — Click to Change Mode
+
+Clicking the badge opens a styled dropdown popover anchored to the badge. The dropdown lists all 6 modes with the current one highlighted.
+
+Selecting a different mode:
+1. Updates the badge text and color immediately
+2. Sends an IPC message to main process
+3. Main process injects `/permissions <mode>\n` into the PTY (writes to the pty process stdin)
+4. Main process updates the `ActiveSession` record
+
+This is best-effort — it works when Claude is idle at the prompt. If Claude is mid-response, the injected text will appear in the terminal but may not take effect until the next prompt. This is an accepted limitation.
+
+**When no badge is shown (default mode):** There needs to be a way to open the dropdown even when in default mode. Options:
+- Always show a subtle badge area (e.g., a small gear or shield icon) that becomes the colored pill for non-default modes
+- Or: right-click the drag-region to access permission mode
+
+We'll use a small shield icon (🛡) that's always present in the drag-region. For non-default modes, it renders as the colored pill with mode text. For default mode, it shows as a muted/dim shield icon. Clicking it always opens the dropdown regardless of current mode.
+
+## Spawn Changes
+
+### `src/main/pty.ts`
+
+`spawnClaude` options gains `permissionMode?: PermissionMode`:
+
+```typescript
+export function spawnClaude(
+  projectPath: string,
+  claudePath: string,
+  options?: {
+    continueSession?: boolean;
+    resumeSessionId?: string;
+    permissionMode?: PermissionMode;
   }
-
-  // ... existing arg logic
-}
+): { id: string; process: IPty }
 ```
 
-**Track active session mode:**
-```typescript
-interface PtySession {
-  // ... existing fields
-  permissionMode: PermissionMode;
-}
-```
+Arg building:
+- If `permissionMode` is set and not `'default'`, add `--permission-mode <mode>`
+- If `permissionMode` is `'bypassPermissions'`, also add `--dangerously-skip-permissions`
 
-## Recommended Approach: Option D (Hybrid)
+### `src/main/index.ts`
 
-### Phase 1 - MVP
-1. Add `permissionMode` to Project type (stored default)
-2. Pass `--permission-mode` flag when spawning Claude
-3. Show mode badge in terminal window title (e.g., append to title: "project (Auto)")
-4. Add "Default Permission Mode" to project right-click menu in popup
-5. Track mode in `PtySession` and expose via IPC
+- `openSession` IPC handler accepts optional `permissionMode` and `altKey` parameters
+- When `altKey` is true, show native context menu for mode selection before launching
+- `openSessionForProject` passes mode through to `spawnClaude` and `createTerminalWindow`
+- `activeSessions` record includes `permissionMode`
+- New IPC handler `change-permission-mode` accepts `sessionId` and `newMode`, writes `/permissions <mode>\n` to the PTY, and updates the session record
 
-### Phase 2 - Polish
-1. Permission mode indicator in popup project list
-2. Option+click to override mode at launch time
-3. Color-coded badge in terminal header area
-4. Global default mode in Settings
+### `src/main/terminal-window.ts`
 
-### Phase 3 - Advanced (Optional)
-1. Mid-session mode change by injecting `/permissions` (only when Claude is idle at prompt)
-2. `--allowedTools` / `--disallowedTools` presets per project
-3. Permission templates (named presets like "Review Mode" = plan, "Trusted Dev" = auto)
+`TerminalWindowOptions` gains `permissionMode?: PermissionMode`. Passed to the renderer via URL query params.
 
-## Open Questions
+### `src/preload.ts`
 
-1. **Should `bypassPermissions` be exposed in the UI?** It's dangerous and requires `--allow-dangerously-skip-permissions`. Suggest: hide behind a Settings toggle or don't expose at all.
-2. **How to detect current permission mode of a running session?** We only know what we launched with. If the user changes it via `/permissions`, we're out of sync. Accept this limitation or try to detect mode changes in PTY output?
-3. **Icon/badge design for each mode?** Could use shield icons with different fills, or simple text labels.
-4. **Should the popup show mode before or after clicking?** Showing it always adds visual noise; showing on hover is more subtle but less discoverable.
+- `openSession` signature extended: `(path: string, forceNew?: boolean, options?: { permissionMode?: PermissionMode; altKey?: boolean })` — or the IPC call passes these as additional args
+- New `changePermissionMode(sessionId: string, mode: PermissionMode)` on the terminal API
+
+### `src/renderer/App.tsx`
+
+- Click handler checks `event.altKey` and passes it through the IPC call
+- No other visual changes to the project list for MVP
+
+### `src/renderer/Terminal.tsx`
+
+- Reads `permissionMode` from URL params on load
+- Renders the badge pill in the drag-region (right side)
+- Badge click opens a dropdown popover component with mode list
+- On selection, calls `window.terminal.changePermissionMode(mode)`
+- Local state tracks current mode (initialized from URL param, updated on change)
+
+### `src/renderer/ProjectEditor.tsx`
+
+- Details tab gets a `<select>` for Permission Mode between Description and the path display
+- Options: Default, Accept Edits, Plan, Auto, Don't Ask, Bypass Permissions
+- Value bound to project's `permissionMode` (default selected when undefined)
+- Included in the `onSave` payload
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/shared/types.ts` | Add `PermissionMode` type, update `Project` and `ActiveSession` |
+| `src/main/pty.ts` | Accept `permissionMode` in options, build CLI args |
+| `src/main/index.ts` | Update IPC handlers, add Option+click menu, add `change-permission-mode` handler |
+| `src/main/terminal-window.ts` | Extend options with `permissionMode`, pass via URL params |
+| `src/preload.ts` | Extend `openSession` args, add `changePermissionMode` to terminal API |
+| `src/renderer/App.tsx` | Detect `altKey` on click, pass through IPC |
+| `src/renderer/Terminal.tsx` | Render badge, dropdown popover, handle mode changes |
+| `src/renderer/ProjectEditor.tsx` | Add permission mode `<select>` to Details tab |
+
+## Accepted Limitations
+
+- **Mode desync:** If the user types `/permissions` directly in the terminal, Cockpit's badge won't update. We display "launched as X" and update on dropdown changes only. Detecting PTY output for `/permissions` responses is fragile and not worth the complexity.
+- **Mid-response injection:** Injecting `/permissions` while Claude is generating output is best-effort. The text will queue in the PTY input buffer and take effect when Claude returns to the prompt.
+- **No global default:** Per-project only. A global default adds settings complexity without clear value — most users either use `default` everywhere or set specific projects differently.
