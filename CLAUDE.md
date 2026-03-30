@@ -143,55 +143,8 @@ gh issue view <number>               # Review the issue
 
 ## Superpowers Skills
 
-The superpowers plugin (`obra/superpowers`) provides structured workflows for common development tasks. It is installed as a Claude Code plugin and activates automatically via a SessionStart hook that injects the `using-superpowers` skill at the start of every session.
+The `obra/superpowers` plugin is installed and activates automatically via SessionStart hook. Project-specific overrides:
 
-**Invoke relevant skills BEFORE taking action** - even a 1% chance a skill might apply means you should check. Skills are invoked via the Skill tool using the `superpowers:` prefix (e.g., `superpowers:brainstorming`). The plugin owns the detailed rules for each skill; this section covers when to use them and project-specific overrides.
-
-### When to Use Each Skill
-
-| Skill | When to Use |
-|-------|-------------|
-| `superpowers:brainstorming` | **BEFORE any creative work** - new features, components, modifications. Explores intent and requirements first. |
-| `superpowers:systematic-debugging` | **Any bug, test failure, or unexpected behavior**. MUST complete root cause investigation before proposing fixes. |
-| `superpowers:test-driven-development` | **Any feature or bugfix**. Write failing test first, watch it fail, then implement. No exceptions. |
-| `superpowers:verification-before-completion` | **Before claiming work is done**. Run verification commands, show evidence, THEN claim success. |
-| `superpowers:writing-plans` | **Multi-step tasks with requirements**. Creates detailed implementation plans with bite-sized steps. |
-| `superpowers:executing-plans` | **Execute a written plan** in a separate session with review checkpoints. |
-| `superpowers:subagent-driven-development` | **Execute plan tasks** in current session with fresh subagent per task + two-stage review. |
-| `superpowers:dispatching-parallel-agents` | **2+ independent problems** (different test files, different subsystems). One agent per problem domain. |
-| `superpowers:using-git-worktrees` | **Feature work needing isolation**. Creates isolated workspace before implementation. |
-| `superpowers:finishing-a-development-branch` | **Implementation complete, tests pass**. Guides merge, PR creation, or cleanup. |
-| `superpowers:requesting-code-review` | **After completing tasks** or before merging. Dispatches code-reviewer agent. |
-| `superpowers:receiving-code-review` | **When receiving review feedback**. Verify before implementing; push back if technically wrong. |
-| `superpowers:writing-skills` | **Creating or editing skills**. TDD applied to process documentation. |
-
-### Skill Priority Order
-
-When multiple skills could apply:
-1. **Process skills first** (brainstorming, debugging) - determine HOW to approach
-2. **Implementation skills second** (TDD, plans) - guide execution
-
-Example: "Build feature X" → brainstorming first, then TDD during implementation.
-
-### Project-Specific Overrides
-
-The following override the plugin's defaults for this project:
-
-- **Design docs** are saved to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-- **Implementation plans** are saved to `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
-
-### Red Flag Thoughts - STOP and Use Skill
-
-| Thought | Reality | Skill Needed |
-|---------|---------|--------------|
-| "This is just a simple question" | Questions are tasks. Check for skills. | using-superpowers |
-| "Let me explore first" | Skills tell you HOW to explore. | brainstorming |
-| "Quick fix for now" | Symptom fixes mask root causes. | systematic-debugging |
-| "I'll test after" | Tests passing immediately prove nothing. | test-driven-development |
-| "Should work now" | Confidence ≠ evidence. | verification-before-completion |
-| "Skip TDD just this once" | That's rationalization. | test-driven-development |
-| "I see the problem, let me fix it" | Seeing symptoms ≠ understanding root cause. | systematic-debugging |
-
-### Worktree Configuration
-
-Worktrees for isolated feature work go in `.worktrees/` (already in .gitignore).
+- **Design docs**: `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- **Implementation plans**: `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+- **Worktrees**: `.worktrees/` (already in .gitignore)
