@@ -143,24 +143,27 @@ gh issue view <number>               # Review the issue
 
 ## Superpowers Skills
 
-The superpowers plugin provides structured workflows for common development tasks. **Invoke relevant skills BEFORE taking action** - even a 1% chance a skill might apply means you should check.
+The superpowers plugin (`obra/superpowers`) provides structured workflows for common development tasks. It is installed as a Claude Code plugin and activates automatically via a SessionStart hook that injects the `using-superpowers` skill at the start of every session.
+
+**Invoke relevant skills BEFORE taking action** - even a 1% chance a skill might apply means you should check. Skills are invoked via the Skill tool using the `superpowers:` prefix (e.g., `superpowers:brainstorming`). The plugin owns the detailed rules for each skill; this section covers when to use them and project-specific overrides.
 
 ### When to Use Each Skill
 
 | Skill | When to Use |
 |-------|-------------|
-| `brainstorming` | **BEFORE any creative work** - new features, components, modifications. Explores intent and requirements first. |
-| `systematic-debugging` | **Any bug, test failure, or unexpected behavior**. MUST complete root cause investigation before proposing fixes. |
-| `test-driven-development` | **Any feature or bugfix**. Write failing test first, watch it fail, then implement. No exceptions. |
-| `verification-before-completion` | **Before claiming work is done**. Run verification commands, show evidence, THEN claim success. |
-| `writing-plans` | **Multi-step tasks with requirements**. Creates detailed implementation plans with bite-sized steps. |
-| `executing-plans` | **Execute a written plan** in a separate session with review checkpoints. |
-| `subagent-driven-development` | **Execute plan tasks** in current session with fresh subagent per task + two-stage review. |
-| `dispatching-parallel-agents` | **2+ independent problems** (different test files, different subsystems). One agent per problem domain. |
-| `using-git-worktrees` | **Feature work needing isolation**. Creates isolated workspace before implementation. |
-| `finishing-a-development-branch` | **Implementation complete, tests pass**. Guides merge, PR creation, or cleanup. |
-| `requesting-code-review` | **After completing tasks** or before merging. Catches issues early. |
-| `receiving-code-review` | **When receiving review feedback**. Verify before implementing; push back if technically wrong. |
+| `superpowers:brainstorming` | **BEFORE any creative work** - new features, components, modifications. Explores intent and requirements first. |
+| `superpowers:systematic-debugging` | **Any bug, test failure, or unexpected behavior**. MUST complete root cause investigation before proposing fixes. |
+| `superpowers:test-driven-development` | **Any feature or bugfix**. Write failing test first, watch it fail, then implement. No exceptions. |
+| `superpowers:verification-before-completion` | **Before claiming work is done**. Run verification commands, show evidence, THEN claim success. |
+| `superpowers:writing-plans` | **Multi-step tasks with requirements**. Creates detailed implementation plans with bite-sized steps. |
+| `superpowers:executing-plans` | **Execute a written plan** in a separate session with review checkpoints. |
+| `superpowers:subagent-driven-development` | **Execute plan tasks** in current session with fresh subagent per task + two-stage review. |
+| `superpowers:dispatching-parallel-agents` | **2+ independent problems** (different test files, different subsystems). One agent per problem domain. |
+| `superpowers:using-git-worktrees` | **Feature work needing isolation**. Creates isolated workspace before implementation. |
+| `superpowers:finishing-a-development-branch` | **Implementation complete, tests pass**. Guides merge, PR creation, or cleanup. |
+| `superpowers:requesting-code-review` | **After completing tasks** or before merging. Dispatches code-reviewer agent. |
+| `superpowers:receiving-code-review` | **When receiving review feedback**. Verify before implementing; push back if technically wrong. |
+| `superpowers:writing-skills` | **Creating or editing skills**. TDD applied to process documentation. |
 
 ### Skill Priority Order
 
@@ -170,36 +173,12 @@ When multiple skills could apply:
 
 Example: "Build feature X" → brainstorming first, then TDD during implementation.
 
-### Key Skill Rules
+### Project-Specific Overrides
 
-**Brainstorming (`/brainstorming`)**
-- One question at a time, prefer multiple choice
-- Propose 2-3 approaches with trade-offs
-- Present design in 200-300 word sections, validate each
-- Write validated design to `docs/plans/YYYY-MM-DD-<topic>-design.md`
+The following override the plugin's defaults for this project:
 
-**Systematic Debugging (`/systematic-debugging`)**
-- **Iron Law**: NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
-- Four phases: Root Cause → Pattern Analysis → Hypothesis Testing → Implementation
-- If 3+ fixes fail: question architecture, don't attempt fix #4 without discussion
-- Red flags: "Quick fix for now", "Just try changing X", "Probably X"
-
-**TDD (`/test-driven-development`)**
-- **Iron Law**: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
-- Red-Green-Refactor cycle: Write test → watch fail → minimal code → watch pass → clean up
-- Wrote code before test? Delete it. Start over. No exceptions.
-- Test passes immediately? Fix the test - it's testing existing behavior.
-
-**Verification Before Completion (`/verification-before-completion`)**
-- **Iron Law**: NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
-- Run the command in THIS message before claiming it passes
-- Forbidden: "Should work now", "I'm confident", expressing satisfaction before verification
-- Required: `[Run command] [See output] "Verified: [claim]"`
-
-**Writing Plans (`/writing-plans`)**
-- Bite-sized steps (2-5 minutes each): write test, run it, implement, run tests, commit
-- Exact file paths, complete code, exact commands with expected output
-- Save to `docs/plans/YYYY-MM-DD-<feature-name>.md`
+- **Design docs** are saved to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- **Implementation plans** are saved to `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 
 ### Red Flag Thoughts - STOP and Use Skill
 
