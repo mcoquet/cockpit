@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
+import type { PermissionMode } from '../shared/types';
 
 // Apply dev mode class if running in development
 if (new URLSearchParams(window.location.search).has('dev')) {
@@ -18,6 +19,48 @@ export default function Terminal() {
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isFocused, setIsFocused] = useState(true);
+
+  const params = new URLSearchParams(window.location.search);
+  const title = params.get('title') || '';
+  const githubUrl = params.get('githubUrl');
+  const initialMode = (params.get('permissionMode') as PermissionMode) || 'default';
+
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>(initialMode);
+  const [showModeDropdown, setShowModeDropdown] = useState(false);
+  const badgeRef = useRef<HTMLSpanElement>(null);
+
+  const modeLabels: Record<PermissionMode, string> = {
+    default: 'default',
+    acceptEdits: 'edits',
+    plan: 'plan',
+    auto: 'auto',
+    dontAsk: 'dontAsk',
+    bypassPermissions: 'bypass',
+  };
+
+  const modeDisplayNames: Record<PermissionMode, string> = {
+    default: 'Default',
+    acceptEdits: 'Accept Edits',
+    plan: 'Plan (read-only)',
+    auto: 'Auto',
+    dontAsk: "Don't Ask",
+    bypassPermissions: 'Bypass Permissions',
+  };
+
+  const modeColors: Record<PermissionMode, string> = {
+    default: '',
+    acceptEdits: 'yellow',
+    plan: 'blue',
+    auto: 'orange',
+    dontAsk: 'red',
+    bypassPermissions: 'darkred',
+  };
+
+  function handleModeChange(mode: PermissionMode) {
+    setPermissionMode(mode);
+    setShowModeDropdown(false);
+    window.terminal.changePermissionMode(mode);
+  }
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -247,24 +290,54 @@ export default function Terminal() {
     };
   }, []);
 
-  const params = new URLSearchParams(window.location.search);
-  const title = params.get('title') || '';
-  const githubUrl = params.get('githubUrl');
+  useEffect(() => {
+    if (!showModeDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      if (badgeRef.current && !badgeRef.current.contains(e.target as Node)) {
+        setShowModeDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showModeDropdown]);
 
   return (
     <>
       <div className={`drag-region ${!isFocused ? 'unfocused' : ''}`}>
-        {githubUrl ? (
-          <>
-            <span
-              className="github-link"
-              title="Open on GitHub"
-              onClick={() => window.terminal.openExternal(githubUrl)}
-            >🐙</span>
-            {' '}{title.replace(/^🐙\s*/, '')}
-          </>
-        ) : (
-          title
+        <div className="drag-region-title">
+          {githubUrl ? (
+            <>
+              <span
+                className="github-link"
+                title="Open on GitHub"
+                onClick={() => window.terminal.openExternal(githubUrl)}
+              >🐙</span>
+              {' '}{title.replace(/^🐙\s*/, '')}
+            </>
+          ) : (
+            title
+          )}
+        </div>
+        <span
+          ref={badgeRef}
+          className={`permission-badge ${modeColors[permissionMode] || 'muted'}`}
+          onClick={() => setShowModeDropdown(!showModeDropdown)}
+          title={`Permission mode: ${modeDisplayNames[permissionMode]}`}
+        >
+          {permissionMode === 'default' ? '🛡' : modeLabels[permissionMode]}
+        </span>
+        {showModeDropdown && (
+          <div className="permission-dropdown">
+            {(Object.keys(modeDisplayNames) as PermissionMode[]).map((mode) => (
+              <div
+                key={mode}
+                className={`permission-dropdown-item ${mode === permissionMode ? 'active' : ''}`}
+                onClick={() => handleModeChange(mode)}
+              >
+                {modeDisplayNames[mode]}
+              </div>
+            ))}
+          </div>
         )}
       </div>
       <div className={`terminal-wrapper ${!isFocused ? 'unfocused' : ''}`}>
