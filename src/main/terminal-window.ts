@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { execFile } from 'child_process';
 import * as settings from './settings';
+import type { PermissionMode } from '../shared/types';
 
 const terminalWindows = new Map<string, BrowserWindow>();
 const terminalProjectPaths = new Map<string, string>();
@@ -14,11 +15,12 @@ export interface TerminalWindowOptions {
   projectPath: string;
   hasGit?: boolean;
   githubUrl?: string;
+  permissionMode?: PermissionMode;
   onClose?: () => void;
 }
 
 export function createTerminalWindow(options: TerminalWindowOptions): BrowserWindow {
-  const { sessionId, projectName, projectPath, hasGit, githubUrl, onClose } = options;
+  const { sessionId, projectName, projectPath, hasGit, githubUrl, permissionMode, onClose } = options;
 
   // Store project path for external terminal shortcut
   terminalProjectPaths.set(sessionId, projectPath);
@@ -46,10 +48,22 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
 
   // Pass sessionId and title to renderer via query param
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL(`http://localhost:5173/terminal.html?sessionId=${sessionId}&title=${encodeURIComponent(title)}&dev=1${githubUrl ? '&githubUrl=' + encodeURIComponent(githubUrl) : ''}`);
+    const params = new URLSearchParams({
+      sessionId,
+      title,
+      ...(githubUrl ? { githubUrl } : {}),
+      ...(permissionMode ? { permissionMode } : {}),
+      dev: '1',
+    });
+    win.loadURL(`http://localhost:5173/terminal.html?${params.toString()}`);
   } else {
     win.loadFile(path.join(__dirname, '../../renderer/terminal.html'), {
-      query: { sessionId, title, ...(githubUrl ? { githubUrl } : {}) },
+      query: {
+        sessionId,
+        title,
+        ...(githubUrl ? { githubUrl } : {}),
+        ...(permissionMode ? { permissionMode } : {}),
+      },
     });
   }
 
