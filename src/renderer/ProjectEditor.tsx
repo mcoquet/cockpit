@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Project, Schedule, ParsedSchedule, ScheduleRun } from '../shared/types';
+import type { Project, Schedule, ParsedSchedule, ScheduleRun, PermissionMode } from '../shared/types';
 
 interface Props {
   project: Project;
@@ -15,6 +15,7 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
   const defaultName = project.path.split('/').pop() || '';
   const [name, setName] = useState(project.name || defaultName);
   const [description, setDescription] = useState(project.description || '');
+  const [permissionMode, setPermissionMode] = useState(project.permissionMode || 'default');
   const [tab, setTab] = useState<Tab>('details');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
@@ -234,7 +235,7 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
   }
 
   function handleSave() {
-    onSave({ name: name || defaultName, description });
+    onSave({ name: name || defaultName, description, permissionMode });
     onClose();
   }
 
@@ -264,6 +265,20 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
             <div className="editor-field">
               <label>Description</label>
               <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this project for?" />
+            </div>
+            <div className="editor-field">
+              <label>Permission Mode</label>
+              <select
+                value={permissionMode}
+                onChange={(e) => setPermissionMode(e.target.value as PermissionMode)}
+              >
+                <option value="default">Default</option>
+                <option value="acceptEdits">Accept Edits</option>
+                <option value="plan">Plan (read-only)</option>
+                <option value="auto">Auto</option>
+                <option value="dontAsk">Don't Ask</option>
+                <option value="bypassPermissions">Bypass Permissions</option>
+              </select>
             </div>
             <div className="editor-path">{project.path}</div>
             <div className="editor-actions">
