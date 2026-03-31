@@ -7,8 +7,8 @@ const cockpitApi: CockpitAPI = {
   updateProject: (path: string, updates: Partial<Project>) =>
     ipcRenderer.invoke('update-project', path, updates),
   removeProject: (path: string) => ipcRenderer.invoke('remove-project', path),
-  openSession: (path: string, forceNew?: boolean) =>
-    ipcRenderer.invoke('open-session', path, forceNew),
+  openSession: (path: string, forceNew?: boolean, permissionMode?: string, altKey?: boolean) =>
+    ipcRenderer.invoke('open-session', path, forceNew, permissionMode, altKey),
   getActiveSessions: () => ipcRenderer.invoke('get-active-sessions'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   selectApp: () => ipcRenderer.invoke('select-app'),
@@ -94,6 +94,9 @@ const terminalApi: TerminalAPI = {
   },
   openExternal: (url: string) => {
     ipcRenderer.send('open-external-url', url);
+  },
+  changePermissionMode: (mode: string) => {
+    ipcRenderer.send('change-permission-mode', mode);
   },
 };
 

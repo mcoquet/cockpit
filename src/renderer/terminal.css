@@ -99,3 +99,93 @@ body.dev {
 .github-link:hover {
   transform: scale(1.2);
 }
+
+/* Permission badge */
+.drag-region {
+  justify-content: space-between;
+  padding: 0 80px 0 80px;
+}
+
+.drag-region-title {
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.permission-badge {
+  -webkit-app-region: no-drag;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  position: relative;
+  transition: opacity 0.15s ease;
+}
+
+.permission-badge.muted {
+  opacity: 0.4;
+  font-size: 12px;
+}
+
+.permission-badge.muted:hover {
+  opacity: 0.7;
+}
+
+.permission-badge.blue {
+  background: rgba(10, 132, 255, 0.25);
+  color: #64d2ff;
+}
+
+.permission-badge.yellow {
+  background: rgba(255, 189, 46, 0.25);
+  color: #ffd60a;
+}
+
+.permission-badge.orange {
+  background: rgba(255, 149, 0, 0.25);
+  color: #ff9f0a;
+}
+
+.permission-badge.red {
+  background: rgba(255, 69, 58, 0.25);
+  color: #ff6961;
+}
+
+.permission-badge.darkred {
+  background: rgba(200, 30, 30, 0.3);
+  color: #ff453a;
+}
+
+/* Permission dropdown */
+.permission-dropdown {
+  -webkit-app-region: no-drag;
+  position: absolute;
+  top: 32px;
+  right: 80px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 4px 0;
+  z-index: 1001;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.permission-dropdown-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #ccc;
+}
+
+.permission-dropdown-item:hover {
+  background: #3a3a3a;
+}
+
+.permission-dropdown-item.active {
+  color: #fff;
+  font-weight: 600;
+}

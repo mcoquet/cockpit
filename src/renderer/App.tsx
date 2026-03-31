@@ -129,8 +129,10 @@ export default function App() {
     }
   }
 
-  async function handleProjectClick(project: Project, _e: React.MouseEvent) {
-    await window.cockpit.openSession(project.path, true);  // Always new session
+  async function handleProjectClick(project: Project, e: React.MouseEvent) {
+    const altKey = e.altKey;
+    const permissionMode = project.permissionMode || 'default';
+    await window.cockpit.openSession(project.path, true, permissionMode, altKey);
     const updated = await window.cockpit.getActiveSessions();
     setSessions(updated);
   }
