@@ -4,11 +4,15 @@ export interface Project {
   description?: string;
   hasGit?: boolean;
   githubUrl?: string;
+  permissionMode?: PermissionMode;
 }
+
+export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'auto' | 'dontAsk' | 'bypassPermissions';
 
 export interface ActiveSession {
   sessionId: string;
   windowId: number;
+  permissionMode: PermissionMode;
 }
 
 export interface SessionInfo {
@@ -57,7 +61,7 @@ export interface CockpitAPI {
   addProject: (path: string) => Promise<Project>;
   updateProject: (path: string, updates: Partial<Project>) => Promise<Project>;
   removeProject: (path: string) => Promise<void>;
-  openSession: (path: string, forceNew?: boolean) => Promise<void>;
+  openSession: (path: string, forceNew?: boolean, permissionMode?: PermissionMode, altKey?: boolean) => Promise<void>;
   getActiveSessions: () => Promise<Record<string, ActiveSession>>;
   selectFolder: () => Promise<string | null>;
   selectApp: () => Promise<string | null>;
@@ -107,6 +111,7 @@ export interface TerminalAPI {
   openPath: (path: string) => void;
   showContextMenu: (options: ContextMenuOptions) => void;
   openExternal: (url: string) => void;
+  changePermissionMode: (mode: PermissionMode) => void;
 }
 
 // Scheduler types
