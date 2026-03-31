@@ -3,6 +3,7 @@ import path from 'path';
 import type { IPty } from 'node-pty';
 import log from 'electron-log';
 import { getClaudeSpawnEnv } from './env';
+import type { PermissionMode } from '../shared/types';
 
 // node-pty is a native module that needs require()
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -35,7 +36,7 @@ const sessionStartTimes = new Map<string, number>();
 export function spawnClaude(
   projectPath: string,
   claudePath: string,
-  options?: { continueSession?: boolean; resumeSessionId?: string }
+  options?: { continueSession?: boolean; resumeSessionId?: string; permissionMode?: PermissionMode }
 ): { id: string; process: IPty } {
   const id = generateSessionId();
   const fullPath = path.join(os.homedir(), projectPath);
@@ -46,6 +47,14 @@ export function spawnClaude(
     args = ['--resume', options.resumeSessionId];
   } else if (options?.continueSession !== false) {
     args = ['--continue'];
+  }
+
+  // Add permission mode flag
+  if (options?.permissionMode && options.permissionMode !== 'default') {
+    args.push('--permission-mode', options.permissionMode);
+    if (options.permissionMode === 'bypassPermissions') {
+      args.push('--dangerously-skip-permissions');
+    }
   }
 
   // Spawn claude directly so PTY exits when claude exits
