@@ -13,7 +13,7 @@ import * as sessions from './sessions';
 import * as scheduler from './scheduler';
 import * as schedulerExecutor from './scheduler-executor';
 import type { AppSettings } from '../shared/types';
-import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule } from '../shared/types';
+import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
 let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
@@ -370,13 +370,41 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('get-active-sessions', () => activeSessions);
 
-  ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean) => {
-    // Hide popup window immediately when opening a session
+  ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean, permissionMode?: PermissionMode, altKey?: boolean) => {
     if (popupWindow) {
       popupWindow.hide();
     }
 
-    await openSessionForProject(projectPath, forceNew ?? false);
+    if (altKey) {
+      // Show native context menu for permission mode selection
+      const project = store.getProjects().find(p => p.path === projectPath);
+      const currentMode = permissionMode || project?.permissionMode || 'default';
+
+      const modes: { label: string; value: PermissionMode }[] = [
+        { label: 'Default', value: 'default' },
+        { label: 'Accept Edits', value: 'acceptEdits' },
+        { label: 'Plan (read-only)', value: 'plan' },
+        { label: 'Auto', value: 'auto' },
+        { label: "Don't Ask", value: 'dontAsk' },
+        { label: 'Bypass Permissions', value: 'bypassPermissions' },
+      ];
+
+      const menu = Menu.buildFromTemplate(
+        modes.map(({ label, value }) => ({
+          label,
+          type: 'checkbox' as const,
+          checked: value === currentMode,
+          click: () => {
+            openSessionForProject(projectPath, true, value);
+          },
+        }))
+      );
+      menu.popup();
+      return;
+    }
+
+    const resolvedMode = permissionMode || store.getProjects().find(p => p.path === projectPath)?.permissionMode || 'default';
+    await openSessionForProject(projectPath, forceNew ?? false, resolvedMode);
   });
 
   ipcMain.handle('get-claude-stats', () => getClaudeStats());
@@ -474,6 +502,27 @@ function registerIpcHandlers(): void {
   ipcMain.on('open-external-url', (_event, url: string) => {
     if (typeof url === 'string' && url.startsWith('https://')) {
       shell.openExternal(url);
+    }
+  });
+
+  // Permission mode change from terminal badge
+  ipcMain.on('change-permission-mode', (event, mode: PermissionMode) => {
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWindow) return;
+
+    const sessionId = windowToSession.get(senderWindow.id);
+    if (!sessionId) return;
+
+    // Inject /permissions command into PTY
+    pty.writeToSession(sessionId, `/permissions ${mode}\n`);
+
+    // Update activeSessions record
+    for (const [projectPath, session] of Object.entries(activeSessions)) {
+      if (session.sessionId === sessionId) {
+        activeSessions[projectPath] = { ...session, permissionMode: mode };
+        notifySessionsChanged();
+        break;
+      }
     }
   });
 
@@ -636,7 +685,7 @@ async function restorePreviousSession(): Promise<void> {
   store.clearPreviousSession();
 }
 
-async function openSessionForProject(projectPath: string, forceNew: boolean): Promise<void> {
+async function openSessionForProject(projectPath: string, forceNew: boolean, permissionMode: PermissionMode = 'default'): Promise<void> {
   const existing = activeSessions[projectPath];
   log.info('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
 
@@ -666,7 +715,10 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
   const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
 
   log.info('[open-session] creating new session with claude at:', claudePath, 'forceNew:', forceNew);
-  const { id: sessionId } = pty.spawnClaude(projectPath, claudePath, { continueSession: !forceNew });
+  const { id: sessionId } = pty.spawnClaude(projectPath, claudePath, {
+    continueSession: !forceNew,
+    permissionMode,
+  });
   log.info('[open-session] new sessionId:', sessionId);
 
   const win = terminalWindow.createTerminalWindow({
@@ -675,6 +727,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
     projectPath,
     hasGit: project?.hasGit,
     githubUrl: project?.githubUrl,
+    permissionMode,
     onClose: () => {
       log.info('[terminal-window] closed, cleaning up session:', sessionId);
       pty.killSession(sessionId);
@@ -690,7 +743,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean): Pr
 
   // For multiple sessions per project, we need a different key
   // But for now, keep the simple model - just track the latest
-  activeSessions[projectPath] = { sessionId, windowId: win.id };
+  activeSessions[projectPath] = { sessionId, windowId: win.id, permissionMode };
   windowToSession.set(win.id, sessionId);
   notifySessionsChanged();
 
@@ -759,9 +812,13 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
   const projects = store.getProjects();
   const project = projects.find((p) => p.path === projectPath);
   const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
+  const permissionMode = project?.permissionMode || 'default';
 
   log.info('[open-session-by-id] resuming session:', sessionId, 'in project:', projectPath);
-  const { id: newSessionId } = pty.spawnClaude(projectPath, claudePath, { resumeSessionId: sessionId });
+  const { id: newSessionId } = pty.spawnClaude(projectPath, claudePath, {
+    resumeSessionId: sessionId,
+    permissionMode,
+  });
   log.info('[open-session-by-id] spawned with internal sessionId:', newSessionId);
 
   const win = terminalWindow.createTerminalWindow({
@@ -770,6 +827,7 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
     projectPath,
     hasGit: project?.hasGit,
     githubUrl: project?.githubUrl,
+    permissionMode,
     onClose: () => {
       log.info('[terminal-window] closed, cleaning up session:', newSessionId);
       pty.killSession(newSessionId);
@@ -782,7 +840,7 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
     },
   });
 
-  activeSessions[projectPath] = { sessionId: newSessionId, windowId: win.id };
+  activeSessions[projectPath] = { sessionId: newSessionId, windowId: win.id, permissionMode };
   windowToSession.set(win.id, newSessionId);
   notifySessionsChanged();
 
