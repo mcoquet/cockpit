@@ -57,8 +57,12 @@ export function saveSettings(settings: AppSettings): void {
     updateGlobalShortcut(settings.globalShortcut);
   }
 
-  // Handle launch at login changes
-  if (oldSettings.launchAtLogin !== settings.launchAtLogin) {
+  // Handle launch at login changes (skip in dev so the dev Electron
+  // binary never registers itself as a login item)
+  if (
+    oldSettings.launchAtLogin !== settings.launchAtLogin &&
+    process.env.NODE_ENV !== 'development'
+  ) {
     app.setLoginItemSettings({
       openAtLogin: settings.launchAtLogin,
     });
@@ -109,8 +113,11 @@ export function initializeSettings(callback: () => void): void {
     updateGlobalShortcut(settings.globalShortcut);
   }
 
-  // Apply launch at login
-  app.setLoginItemSettings({
-    openAtLogin: settings.launchAtLogin,
-  });
+  // Apply launch at login (skip in dev so running the dev build never
+  // re-registers the dev Electron binary as a login item)
+  if (process.env.NODE_ENV !== 'development') {
+    app.setLoginItemSettings({
+      openAtLogin: settings.launchAtLogin,
+    });
+  }
 }
