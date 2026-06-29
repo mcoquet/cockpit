@@ -4,6 +4,7 @@
   "description": "Claude Code project manager for macOS",
   "main": "dist/main/main/index.js",
   "scripts": {
+    "test": "npm run build:main && node --test \"test/**/*.test.js\"",
     "rebuild": "electron-rebuild -f -w node-pty",
     "postinstall": "git config core.hooksPath .githooks && electron-rebuild -f -w node-pty",
     "build:main": "tsc -p tsconfig.main.json",

@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { execFile } from 'child_process';
 import * as settings from './settings';
+import { countLiveWindows } from './window-count';
 import type { PermissionMode } from '../shared/types';
 
 const terminalWindows = new Map<string, BrowserWindow>();
@@ -134,6 +135,13 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
 
 export function getTerminalWindow(sessionId: string): BrowserWindow | undefined {
   return terminalWindows.get(sessionId);
+}
+
+// Number of terminal windows currently open. Authoritative source for dock
+// visibility — unlike activeSessions (keyed by projectPath), this counts every
+// open window, including multiple windows for the same project.
+export function getTerminalWindowCount(): number {
+  return countLiveWindows(terminalWindows.values());
 }
 
 export function focusTerminalWindow(sessionId: string): boolean {

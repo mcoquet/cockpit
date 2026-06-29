@@ -6,6 +6,7 @@ import * as store from './store';
 import { findClaudeBinary } from './claude';
 import * as pty from './pty';
 import * as terminalWindow from './terminal-window';
+import { shouldShowDock } from './window-count';
 import { requestPermission } from './permissions';
 import * as settings from './settings';
 import { getClaudeStats } from './claude-stats';
@@ -204,8 +205,11 @@ function showStatusWindow(): void {
 function updateDockVisibility(): void {
   if (process.platform !== 'darwin' || !app.dock) return;
 
-  const hasActiveSessions = Object.keys(activeSessions).length > 0;
-  if (hasActiveSessions) {
+  // Count actual open terminal windows, not activeSessions entries.
+  // activeSessions is keyed by projectPath, so multiple windows for the same
+  // project collapse to one entry — closing one would otherwise hide the dock
+  // while another window is still open (#4).
+  if (shouldShowDock(terminalWindow.getTerminalWindowCount())) {
     app.dock.show();
   } else {
     app.dock.hide();
