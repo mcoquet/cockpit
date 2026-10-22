@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   globalShortcut: '',
   launchAtLogin: false,
   externalTerminal: 'terminal',
+  envVars: {},
 };
 
 interface SettingsStoreSchema {
