@@ -2,6 +2,7 @@ import os from 'os';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import log from 'electron-log';
+import type { EnvVars } from '../shared/types';
 
 // Standard macOS paths that should always be included
 const STANDARD_PATHS = [
@@ -58,7 +59,7 @@ export function getUserShellPath(): string {
  * This ensures the PATH includes the user's shell PATH
  * and the directory containing the claude binary.
  */
-export function getClaudeSpawnEnv(claudePath: string): NodeJS.ProcessEnv {
+export function getClaudeSpawnEnv(claudePath: string, extraEnv?: EnvVars): NodeJS.ProcessEnv {
   const claudeDir = path.dirname(claudePath);
   const userPath = getUserShellPath();
   const extendedPath = `${claudeDir}:${userPath}`;
@@ -66,5 +67,6 @@ export function getClaudeSpawnEnv(claudePath: string): NodeJS.ProcessEnv {
   return {
     ...process.env,
     PATH: extendedPath,
+    ...extraEnv,
   };
 }
