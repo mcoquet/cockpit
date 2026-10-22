@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Project, Schedule, ParsedSchedule, ScheduleRun, PermissionMode } from '../shared/types';
+import { envVarsToRows, rowsToEnvVars } from '../shared/env-vars';
+import type { EnvVarRow } from '../shared/env-vars';
+import EnvVarsEditor from './EnvVarsEditor';
 
 interface Props {
   project: Project;
@@ -16,6 +19,7 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
   const [name, setName] = useState(project.name || defaultName);
   const [description, setDescription] = useState(project.description || '');
   const [permissionMode, setPermissionMode] = useState(project.permissionMode || 'default');
+  const [envRows, setEnvRows] = useState<EnvVarRow[]>(() => envVarsToRows(project.envVars));
   const [tab, setTab] = useState<Tab>('details');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
@@ -235,7 +239,7 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
   }
 
   function handleSave() {
-    onSave({ name: name || defaultName, description, permissionMode });
+    onSave({ name: name || defaultName, description, permissionMode, envVars: rowsToEnvVars(envRows) });
     onClose();
   }
 
@@ -279,6 +283,11 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                 <option value="dontAsk">Don't Ask</option>
                 <option value="bypassPermissions">Bypass Permissions</option>
               </select>
+            </div>
+            <div className="editor-field">
+              <label>Environment Variables</label>
+              <div className="env-vars-hint">Override global variables with the same name.</div>
+              <EnvVarsEditor rows={envRows} onChange={setEnvRows} />
             </div>
             <div className="editor-path">{project.path}</div>
             <div className="editor-actions">
