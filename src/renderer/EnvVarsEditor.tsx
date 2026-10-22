@@ -11,6 +11,8 @@ export default function EnvVarsEditor({ rows, onChange }: Props) {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
+  const hasInvalid = rows.some((r) => r.name !== '' && !isValidEnvName(r.name));
+
   return (
     <div className="env-vars-editor">
       {rows.map((row, i) => {
@@ -45,6 +47,7 @@ export default function EnvVarsEditor({ rows, onChange }: Props) {
           </div>
         );
       })}
+      {hasInvalid && <div className="env-vars-note">Rows with invalid names are not saved.</div>}
       <button
         type="button"
         className="env-var-add"

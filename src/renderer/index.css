@@ -934,6 +934,11 @@ body.dev .app {
   margin-bottom: 6px;
 }
 
+.env-vars-note {
+  font-size: 11px;
+  color: #ff6b6b;
+}
+
 .env-vars-editor {
   display: flex;
   flex-direction: column;

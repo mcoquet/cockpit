@@ -22,6 +22,20 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  /* Drag regions swallow wheel events, so the scroller must be no-drag */
+  -webkit-app-region: no-drag;
+}
+
+/* Keep a draggable title strip over the no-drag scroller */
+.settings::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  -webkit-app-region: drag;
 }
 
 /* Dev mode indicator */
@@ -245,12 +259,13 @@ body.dev .settings {
 }
 
 /* Environment variables editor */
-.settings {
-  overflow-y: auto;
-}
-
 .env-vars-hint {
   margin-bottom: 10px;
+}
+
+.env-vars-note {
+  font-size: 11px;
+  color: #ff6b6b;
 }
 
 .env-vars-editor {

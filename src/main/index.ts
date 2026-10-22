@@ -124,7 +124,7 @@ function createTray(): void {
 function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 420,
-    height: 420,
+    height: 600,
     title: process.env.NODE_ENV === 'development' ? 'Cockpit Settings (Dev)' : 'Cockpit Settings',
     resizable: false,
     minimizable: false,

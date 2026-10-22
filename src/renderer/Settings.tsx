@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ExternalTerminal, EnvVars } from '../shared/types';
 import { envVarsToRows, rowsToEnvVars } from '../shared/env-vars';
 import type { EnvVarRow } from '../shared/env-vars';
@@ -34,6 +34,7 @@ export default function Settings() {
   const [envRows, setEnvRows] = useState<EnvVarRow[]>([]);
   const [recording, setRecording] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const pendingSave = useRef<Settings | null>(null);
 
   // Load settings on mount
   useEffect(() => {
@@ -48,12 +49,26 @@ export default function Settings() {
   useEffect(() => {
     if (!loaded) return; // Don't save until initial load complete
 
+    pendingSave.current = settings;
     const timer = setTimeout(() => {
+      pendingSave.current = null;
       window.cockpit.saveSettings(settings);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [settings, loaded]);
+
+  // Flush a pending debounced save if the window closes
+  useEffect(() => {
+    const flush = () => {
+      if (pendingSave.current) {
+        window.cockpit.saveSettings(pendingSave.current);
+        pendingSave.current = null;
+      }
+    };
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, []);
 
   const handleEnvRowsChange = (rows: EnvVarRow[]) => {
     setEnvRows(rows);
