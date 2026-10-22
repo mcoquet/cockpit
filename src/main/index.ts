@@ -13,6 +13,7 @@ import { getClaudeStats } from './claude-stats';
 import * as sessions from './sessions';
 import * as scheduler from './scheduler';
 import * as schedulerExecutor from './scheduler-executor';
+import { getEnvVarsForProject } from './session-env';
 import type { AppSettings } from '../shared/types';
 import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
@@ -123,7 +124,7 @@ function createTray(): void {
 function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 420,
-    height: 420,
+    height: 600,
     title: process.env.NODE_ENV === 'development' ? 'Cockpit Settings (Dev)' : 'Cockpit Settings',
     resizable: false,
     minimizable: false,
@@ -722,6 +723,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, per
   const { id: sessionId } = pty.spawnClaude(projectPath, claudePath, {
     continueSession: !forceNew,
     permissionMode,
+    envVars: getEnvVarsForProject(projectPath),
   });
   log.info('[open-session] new sessionId:', sessionId);
 
@@ -822,6 +824,7 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
   const { id: newSessionId } = pty.spawnClaude(projectPath, claudePath, {
     resumeSessionId: sessionId,
     permissionMode,
+    envVars: getEnvVarsForProject(projectPath),
   });
   log.info('[open-session-by-id] spawned with internal sessionId:', newSessionId);
 

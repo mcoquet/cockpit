@@ -3,7 +3,7 @@ import path from 'path';
 import type { IPty } from 'node-pty';
 import log from 'electron-log';
 import { getClaudeSpawnEnv } from './env';
-import type { PermissionMode } from '../shared/types';
+import type { PermissionMode, EnvVars } from '../shared/types';
 
 // node-pty is a native module that needs require()
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -36,7 +36,7 @@ const sessionStartTimes = new Map<string, number>();
 export function spawnClaude(
   projectPath: string,
   claudePath: string,
-  options?: { continueSession?: boolean; resumeSessionId?: string; permissionMode?: PermissionMode }
+  options?: { continueSession?: boolean; resumeSessionId?: string; permissionMode?: PermissionMode; envVars?: EnvVars }
 ): { id: string; process: IPty } {
   const id = generateSessionId();
   const fullPath = path.join(os.homedir(), projectPath);
@@ -64,7 +64,7 @@ export function spawnClaude(
     rows: 24,
     cwd: fullPath,
     env: {
-      ...getClaudeSpawnEnv(claudePath),
+      ...getClaudeSpawnEnv(claudePath, options?.envVars),
       TERM: 'xterm-256color',
     },
   });

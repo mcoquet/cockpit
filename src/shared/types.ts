@@ -1,3 +1,5 @@
+export type EnvVars = Record<string, string>;
+
 export interface Project {
   path: string;
   name?: string;
@@ -5,6 +7,7 @@ export interface Project {
   hasGit?: boolean;
   githubUrl?: string;
   permissionMode?: PermissionMode;
+  envVars?: EnvVars;
 }
 
 export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'auto' | 'dontAsk' | 'bypassPermissions';
@@ -27,6 +30,7 @@ export interface AppSettings {
   globalShortcut: string;
   launchAtLogin: boolean;
   externalTerminal: ExternalTerminal;
+  envVars: EnvVars;
 }
 
 export interface DailyActivity {

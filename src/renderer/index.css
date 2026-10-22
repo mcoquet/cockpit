@@ -926,3 +926,85 @@ body.dev .app {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Environment variables editor */
+.env-vars-hint {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.env-vars-note {
+  font-size: 11px;
+  color: #ff6b6b;
+}
+
+.env-vars-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.env-var-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.env-var-row input {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #1e1e1e;
+  color: #e0e0e0;
+  font-size: 12px;
+  outline: none;
+}
+
+.env-var-row input:focus {
+  border-color: #0a84ff;
+}
+
+.env-var-name {
+  flex: 0 0 38%;
+  font-family: 'SF Mono', SFMono-Regular, Menlo, monospace;
+}
+
+.env-var-value {
+  flex: 1;
+}
+
+.env-var-row input.env-var-invalid {
+  border-color: #ff453a;
+}
+
+.env-var-remove {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: #444;
+  color: #e0e0e0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.env-var-remove:hover {
+  background: #ff453a;
+  color: white;
+}
+
+.env-var-add {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #444;
+  color: #e0e0e0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.env-var-add:hover {
+  background: #555;
+}

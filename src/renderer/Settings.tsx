@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import type { ExternalTerminal } from '../shared/types';
+import { useState, useEffect, useRef } from 'react';
+import type { ExternalTerminal, EnvVars } from '../shared/types';
+import { envVarsToRows, rowsToEnvVars } from '../shared/env-vars';
+import type { EnvVarRow } from '../shared/env-vars';
+import EnvVarsEditor from './EnvVarsEditor';
 
 // Apply dev mode class if running in development
 if (new URLSearchParams(window.location.search).has('dev')) {
@@ -10,6 +13,7 @@ interface Settings {
   globalShortcut: string;
   launchAtLogin: boolean;
   externalTerminal: ExternalTerminal;
+  envVars: EnvVars;
 }
 
 const TERMINAL_OPTIONS: { value: ExternalTerminal | 'other'; label: string }[] = [
@@ -25,14 +29,18 @@ export default function Settings() {
     globalShortcut: '',
     launchAtLogin: false,
     externalTerminal: 'terminal',
+    envVars: {},
   });
+  const [envRows, setEnvRows] = useState<EnvVarRow[]>([]);
   const [recording, setRecording] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const pendingSave = useRef<Settings | null>(null);
 
   // Load settings on mount
   useEffect(() => {
     window.cockpit.getSettings().then((s) => {
       setSettings(s);
+      setEnvRows(envVarsToRows(s.envVars));
       setLoaded(true);
     });
   }, []);
@@ -41,12 +49,31 @@ export default function Settings() {
   useEffect(() => {
     if (!loaded) return; // Don't save until initial load complete
 
+    pendingSave.current = settings;
     const timer = setTimeout(() => {
+      pendingSave.current = null;
       window.cockpit.saveSettings(settings);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [settings, loaded]);
+
+  // Flush a pending debounced save if the window closes
+  useEffect(() => {
+    const flush = () => {
+      if (pendingSave.current) {
+        window.cockpit.saveSettings(pendingSave.current);
+        pendingSave.current = null;
+      }
+    };
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, []);
+
+  const handleEnvRowsChange = (rows: EnvVarRow[]) => {
+    setEnvRows(rows);
+    setSettings((s) => ({ ...s, envVars: rowsToEnvVars(rows) }));
+  };
 
   const handleTerminalChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -184,6 +211,14 @@ export default function Settings() {
             )}
           </select>
         </div>
+      </div>
+
+      <div className="settings-card">
+        <div className="card-title">Environment Variables</div>
+        <div className="setting-description env-vars-hint">
+          Passed to every Claude session. Project variables override these.
+        </div>
+        <EnvVarsEditor rows={envRows} onChange={handleEnvRowsChange} />
       </div>
 
     </div>

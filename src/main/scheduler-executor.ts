@@ -4,6 +4,7 @@ import os from 'os';
 import type { Schedule } from '../shared/types';
 import { findClaudeBinary } from './claude';
 import { getClaudeSpawnEnv } from './env';
+import { getEnvVarsForProject } from './session-env';
 
 export interface ParsedSchedule {
   cron: string;
@@ -59,7 +60,7 @@ export async function executeSchedule(schedule: Schedule, runId: string): Promis
         cwd: expandedPath,
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: true,
-        env: getClaudeSpawnEnv(claudePath),
+        env: getClaudeSpawnEnv(claudePath, getEnvVarsForProject(schedule.projectPath)),
       });
 
       child.stdout.on('data', (data) => {
@@ -119,7 +120,7 @@ Parse this request: "${input}"`;
   return new Promise((resolve, reject) => {
     const child = spawn(claudePath, ['--print', '--model', 'haiku', '-p', '-'], {
       timeout: 30000,
-      env: getClaudeSpawnEnv(claudePath),
+      env: getClaudeSpawnEnv(claudePath, getEnvVarsForProject()),
     });
 
     let stdout = '';
