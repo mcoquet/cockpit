@@ -129,10 +129,8 @@ jobs:
             app "Cockpit.app"
 
             # Remove quarantine attribute since app is unsigned
-            postflight do
-              system_command "/usr/bin/xattr",
-                             args: ["-d", "com.apple.quarantine", "#{appdir}/Cockpit.app"],
-                             sudo: false
+            postflight_steps do
+              run "/usr/bin/xattr", args: ["-d", "com.apple.quarantine", "{{appdir}}/Cockpit.app"]
             end
 
             zap trash: [
