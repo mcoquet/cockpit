@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Pre-push hook: Auto-sync package.json version when pushing a version tag
+# Pre-push hook: Auto-sync package.json + package-lock.json version when pushing a version tag
 #
 # When you push a tag like v0.7.0, this hook:
 # 1. Checks if package.json version matches
-# 2. If not, updates package.json, commits, and moves the tag
+# 2. If not, updates package.json and package-lock.json, commits, and moves the tag
 #
 
 while read local_ref local_sha remote_ref remote_sha; do
@@ -23,7 +23,7 @@ while read local_ref local_sha remote_ref remote_sha; do
       npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       # Commit the change
-      git add package.json
+      git add package.json package-lock.json
       git commit -m "chore: bump version to $VERSION"
 
       # Move the tag to the new commit
