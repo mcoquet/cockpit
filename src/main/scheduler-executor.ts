@@ -54,13 +54,14 @@ export async function executeSchedule(schedule: Schedule, runId: string): Promis
     }
 
     let output = '';
+    const env = await getClaudeSpawnEnv(claudePath, expandedPath, getEnvVarsForProject(schedule.projectPath));
 
     return new Promise((resolve, reject) => {
       const child = spawn(claudePath, ['-p', schedule.prompt], {
         cwd: expandedPath,
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: true,
-        env: getClaudeSpawnEnv(claudePath, getEnvVarsForProject(schedule.projectPath)),
+        env,
       });
 
       child.stdout.on('data', (data) => {
@@ -117,10 +118,12 @@ Examples:
 
 Parse this request: "${input}"`;
 
+  const env = await getClaudeSpawnEnv(claudePath, os.homedir(), getEnvVarsForProject());
+
   return new Promise((resolve, reject) => {
     const child = spawn(claudePath, ['--print', '--model', 'haiku', '-p', '-'], {
       timeout: 30000,
-      env: getClaudeSpawnEnv(claudePath, getEnvVarsForProject()),
+      env,
     });
 
     let stdout = '';

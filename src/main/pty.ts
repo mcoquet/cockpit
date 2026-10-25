@@ -33,11 +33,11 @@ interface ExitInfo {
 const exitListeners = new Map<string, ((info: ExitInfo) => void)[]>();
 const sessionStartTimes = new Map<string, number>();
 
-export function spawnClaude(
+export async function spawnClaude(
   projectPath: string,
   claudePath: string,
   options?: { continueSession?: boolean; resumeSessionId?: string; permissionMode?: PermissionMode; envVars?: EnvVars }
-): { id: string; process: IPty } {
+): Promise<{ id: string; process: IPty }> {
   const id = generateSessionId();
   const fullPath = path.join(os.homedir(), projectPath);
 
@@ -57,6 +57,8 @@ export function spawnClaude(
     }
   }
 
+  const env = await getClaudeSpawnEnv(claudePath, fullPath, options?.envVars);
+
   // Spawn claude directly so PTY exits when claude exits
   const ptyProcess: IPty = pty.spawn(claudePath, args, {
     name: 'xterm-256color',
@@ -64,7 +66,7 @@ export function spawnClaude(
     rows: 24,
     cwd: fullPath,
     env: {
-      ...getClaudeSpawnEnv(claudePath, options?.envVars),
+      ...env,
       TERM: 'xterm-256color',
     },
   });

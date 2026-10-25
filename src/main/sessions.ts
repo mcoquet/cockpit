@@ -118,7 +118,7 @@ function extractFirstUserMessage(filePath: string): string | null {
  * Generate a summary for a session using claude CLI with haiku model.
  * Called when a session closes.
  */
-export function generateSessionSummary(projectPath: string, claudeSessionId: string): void {
+export async function generateSessionSummary(projectPath: string, claudeSessionId: string): Promise<void> {
   const folder = getClaudeProjectFolder(projectPath);
   const jsonlPath = path.join(folder, `${claudeSessionId}.jsonl`);
   const summaryPath = getSummaryPath(projectPath, claudeSessionId);
@@ -173,7 +173,7 @@ export function generateSessionSummary(projectPath: string, claudeSessionId: str
 
   const child = spawn(claudePath, ['--model', 'haiku', '--print'], {
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: getClaudeSpawnEnv(claudePath, getEnvVarsForProject()),
+    env: await getClaudeSpawnEnv(claudePath, path.join(os.homedir(), projectPath), getEnvVarsForProject()),
   });
 
   // Write prompt to stdin and close it
