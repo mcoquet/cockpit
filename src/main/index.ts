@@ -690,6 +690,8 @@ async function restorePreviousSession(): Promise<void> {
   store.clearPreviousSession();
 }
 
+const openingProjects = new Set<string>();
+
 async function openSessionForProject(projectPath: string, forceNew: boolean, permissionMode: PermissionMode = 'default'): Promise<void> {
   const existing = activeSessions[projectPath];
   log.info('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
@@ -719,12 +721,24 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, per
   const project = projects.find((p) => p.path === projectPath);
   const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
 
+  // Spawning waits on the shell env capture; ignore repeat clicks meanwhile.
+  if (!forceNew && openingProjects.has(projectPath)) {
+    log.info('[open-session] already opening, ignoring:', projectPath);
+    return;
+  }
+
   log.info('[open-session] creating new session with claude at:', claudePath, 'forceNew:', forceNew);
-  const { id: sessionId } = pty.spawnClaude(projectPath, claudePath, {
-    continueSession: !forceNew,
-    permissionMode,
-    envVars: getEnvVarsForProject(projectPath),
-  });
+  if (!forceNew) openingProjects.add(projectPath);
+  let sessionId: string;
+  try {
+    ({ id: sessionId } = await pty.spawnClaude(projectPath, claudePath, {
+      continueSession: !forceNew,
+      permissionMode,
+      envVars: getEnvVarsForProject(projectPath),
+    }));
+  } finally {
+    if (!forceNew) openingProjects.delete(projectPath);
+  }
   log.info('[open-session] new sessionId:', sessionId);
 
   const win = terminalWindow.createTerminalWindow({
@@ -821,7 +835,7 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
   const permissionMode = project?.permissionMode || 'default';
 
   log.info('[open-session-by-id] resuming session:', sessionId, 'in project:', projectPath);
-  const { id: newSessionId } = pty.spawnClaude(projectPath, claudePath, {
+  const { id: newSessionId } = await pty.spawnClaude(projectPath, claudePath, {
     resumeSessionId: sessionId,
     permissionMode,
     envVars: getEnvVarsForProject(projectPath),
