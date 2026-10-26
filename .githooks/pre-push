@@ -4,8 +4,13 @@
 #
 # When you push a tag like v0.7.0, this hook:
 # 1. Checks if package.json version matches
-# 2. If not, updates package.json and package-lock.json, commits, and moves the tag
+# 2. If not, updates package.json and package-lock.json, commits, moves the tag,
+#    and aborts the push. Git resolves what to push before this hook runs, so
+#    the bump commit would otherwise be left off the branch. Re-running the
+#    same push sends the branch and tag together.
 #
+
+BUMPED=""
 
 while read local_ref local_sha remote_ref remote_sha; do
   # Check if this is a version tag (refs/tags/v*)
@@ -19,20 +24,24 @@ while read local_ref local_sha remote_ref remote_sha; do
     if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
       echo "📦 Syncing package.json version: $CURRENT_VERSION → $VERSION"
 
-      # Update package.json
-      npm version "$VERSION" --no-git-tag-version --allow-same-version
+      # Update package.json, commit, and move the tag to the new commit
+      if ! npm version "$VERSION" --no-git-tag-version --allow-same-version \
+        || ! git add package.json package-lock.json \
+        || ! git commit -m "chore: bump version to $VERSION" \
+        || ! git tag -f "$TAG_NAME"; then
+        echo "✗ Version bump failed; push aborted." >&2
+        exit 1
+      fi
 
-      # Commit the change
-      git add package.json package-lock.json
-      git commit -m "chore: bump version to $VERSION"
-
-      # Move the tag to the new commit
-      git tag -f "$TAG_NAME"
-
-      echo "✓ Updated package.json and moved tag to new commit"
-      echo "  Note: Local tag has been updated. Push will include the version bump."
+      BUMPED="$TAG_NAME"
     fi
   fi
 done
+
+if [[ -n "$BUMPED" ]]; then
+  echo "✓ Committed the version bump and moved $BUMPED to it." >&2
+  echo "  Push aborted so the branch isn't left behind. Run the same git push again." >&2
+  exit 1
+fi
 
 exit 0

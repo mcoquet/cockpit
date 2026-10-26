@@ -82,7 +82,7 @@ This is an Electron app with the standard three-process architecture:
 git tag v0.7.0 && git push origin main v0.7.0
 ```
 
-The pre-push hook (`.githooks/pre-push`) automatically syncs `package.json` version when pushing a version tag. If the version doesn't match, it updates package.json, commits, and moves the tag.
+The pre-push hook (`.githooks/pre-push`) automatically syncs `package.json` version when pushing a version tag. If the version doesn't match, it updates package.json and package-lock.json, commits, moves the tag, and **aborts the push**. Run the same `git push` again: the second push sends `main` and the tag together. (Git resolves refs before the hook runs, so letting the first push continue would leave the bump commit off `main`.)
 
 ### What Happens on Tag Push
 
