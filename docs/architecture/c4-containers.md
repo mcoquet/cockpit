@@ -5,9 +5,9 @@ keeps, all on the user's Mac. Claude Code processes are started by Cockpit but a
 Code, so they appear as one external system.
 
 ```mermaid
-%% See docs/adr/0001-embedded-terminal-spawns-claude-directly.md
-%% See docs/adr/0003-in-process-scheduler.md
 C4Container
+  %% See docs/adr/0001-embedded-terminal-spawns-claude-directly.md
+  %% See docs/adr/0003-in-process-scheduler.md
   title Container diagram for Cockpit
 
   Person(user, "Developer", "Runs Claude Code across local projects")

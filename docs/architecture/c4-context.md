@@ -5,9 +5,9 @@ two outbound calls: the Anthropic status page, and the Claude model calls that C
 makes on its behalf (summaries, schedule interpretation, and the user's own work).
 
 ```mermaid
-%% See docs/adr/0004-unsigned-homebrew-distribution.md
-%% See docs/adr/0005-capture-interactive-shell-env-per-spawn.md
 C4Context
+  %% See docs/adr/0004-unsigned-homebrew-distribution.md
+  %% See docs/adr/0005-capture-interactive-shell-env-per-spawn.md
   title System Context diagram for Cockpit
 
   Person(user, "Developer", "Runs Claude Code across local projects")
