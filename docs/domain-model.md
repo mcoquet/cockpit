@@ -66,6 +66,11 @@ Diagram names are the glossary terms without spaces.
   deletes its summary.
 - A schedule fires only while it is enabled and Cockpit is running.
 - Deleting a schedule deletes all its schedule runs.
+- Removing a project deletes its schedules and their schedule runs, and stops their cron
+  jobs and queued runs, unless the user unticks "Also delete N schedules" in the remove
+  dialog; unticked, the schedules are kept unchanged and keep firing. A schedule run
+  already going when its schedule is deleted may finish, but leaves no record and starts
+  no queued run. A project with no schedules is removed without being asked about them.
 - At most 1,000 schedule runs are kept across all schedules; the oldest are dropped first.
 - When a schedule with queue behaviour **skip** comes due while its previous run is still
   going, the new schedule run is recorded as failed ("Skipped") and does not run.
@@ -82,7 +87,6 @@ Diagram names are the glossary terms without spaces.
 
 These follow from the code as built; they are gaps, not rules.
 
-- Removing a project does not remove its schedules: they stay enabled and keep firing.
 - **Catch-up** is stored on a schedule but nothing acts on it; missed occurrences are never
   run.
 - Queued schedule runs wait only in memory. If Cockpit quits first, they stay "queued" in
