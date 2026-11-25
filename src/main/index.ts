@@ -17,6 +17,7 @@ import * as scheduler from './scheduler';
 import * as schedulerExecutor from './scheduler-executor';
 import { getEnvVarsForProject } from './session-env';
 import { expandProjectPath, isDeletableProjectFolder } from './project-path';
+import { createCapabilitiesReader } from './project-capabilities';
 import { askRemoveProject, buildRemoveDialogText } from './project-removal';
 import type { AppSettings } from '../shared/types';
 import type { Project, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
@@ -418,6 +419,12 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('has-session-history', (_event, projectPath: string) => {
     return sessions.hasSessionHistory(projectPath);
+  });
+
+  // Read-only: MCP servers, skills, agents and commands Claude Code would load (#14, #12).
+  const capabilities = createCapabilitiesReader({ home: app.getPath('home') });
+  ipcMain.handle('get-project-capabilities', (_event, projectPath: string) => {
+    return capabilities.get(expandProjectPath(projectPath, app.getPath('home')));
   });
 
   ipcMain.handle('delete-session', async (_event, projectPath: string, sessionId: string) => {

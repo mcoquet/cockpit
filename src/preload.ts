@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions, SessionInfo, Schedule, ScheduleRun } from './shared/types';
+import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions, SessionInfo, Schedule, ScheduleRun, ProjectCapabilities } from './shared/types';
 
 const cockpitApi: CockpitAPI = {
   getProjects: () => ipcRenderer.invoke('get-projects'),
@@ -32,6 +32,8 @@ const cockpitApi: CockpitAPI = {
     ipcRenderer.invoke('get-project-sessions', path, limit, offset),
   hasSessionHistory: (path: string): Promise<boolean> =>
     ipcRenderer.invoke('has-session-history', path),
+  getProjectCapabilities: (path: string): Promise<ProjectCapabilities> =>
+    ipcRenderer.invoke('get-project-capabilities', path),
   deleteSession: (path: string, sessionId: string): Promise<boolean> =>
     ipcRenderer.invoke('delete-session', path, sessionId),
   openSessionById: (path: string, sessionId: string): Promise<void> =>

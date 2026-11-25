@@ -367,7 +367,7 @@ body.dev .app {
 /* Wrap long paths inside the box instead of running past it (#18) */
 .create-preview span {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .create-actions {
@@ -512,6 +512,76 @@ body.dev .app {
 
 .show-more-btn:hover {
   color: #fff;
+}
+
+/* Project capabilities, in an expanded project (#14, #12) */
+.capabilities {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px 4px;
+  margin-top: 2px;
+  border-top: 1px solid #2e2e2e;
+  font-size: 11px;
+  cursor: default;
+}
+
+.session-list > .capabilities:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+
+.caps-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.caps-label {
+  flex: 0 0 64px;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+}
+
+.caps-items {
+  min-width: 0;
+  color: #ccc;
+  overflow-wrap: break-word;
+}
+
+.caps-muted {
+  color: #777;
+}
+
+.caps-global {
+  background: none;
+  border: none;
+  padding: 0 0 0 4px;
+  color: #888;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.caps-global:hover {
+  color: #fff;
+}
+
+.caps-global-list {
+  margin-left: 70px;
+  color: #888;
+  overflow-wrap: break-word;
+}
+
+.caps-note {
+  color: #777;
+}
+
+.caps-problem {
+  color: #c9a227;
 }
 
 /* Editor tabs */

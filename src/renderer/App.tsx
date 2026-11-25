@@ -2,6 +2,8 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import type { Project, ActiveSession, SessionInfo } from '../shared/types';
 import ProjectEditor from './ProjectEditor';
 import UndoableTextarea from './UndoableTextarea';
+import ProjectCapabilities from './ProjectCapabilities';
+import type { CapabilitiesState } from './ProjectCapabilities';
 import { splitPathForDisplay } from '../shared/path-display';
 
 // Apply dev mode class if running in development
@@ -30,7 +32,7 @@ export default function App() {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [projectSessions, setProjectSessions] = useState<Record<string, SessionInfo[]>>({});
   const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
-  const [hasHistory, setHasHistory] = useState<Record<string, boolean>>({});
+  const [capabilities, setCapabilities] = useState<Record<string, CapabilitiesState>>({});
 
   useEffect(() => {
     loadData();
@@ -83,7 +85,6 @@ export default function App() {
     ]);
     setProjects(projectList);
     setSessions(activeSessions);
-    checkSessionHistory(projectList);
   }
 
   async function loadCreateLocation() {
@@ -91,16 +92,6 @@ export default function App() {
     if (location) {
       setNewProjectLocation(location);
     }
-  }
-
-  async function checkSessionHistory(projectList: Project[]) {
-    const historyMap: Record<string, boolean> = {};
-    await Promise.all(
-      projectList.map(async (p) => {
-        historyMap[p.path] = await window.cockpit.hasSessionHistory(p.path);
-      })
-    );
-    setHasHistory(historyMap);
   }
 
   async function handleAddProject() {
@@ -153,6 +144,7 @@ export default function App() {
       newExpanded.delete(path);
     } else {
       newExpanded.add(path);
+      loadCapabilities(path);
       // Load sessions if not already loaded
       if (!projectSessions[path]) {
         const sessions = await window.cockpit.getProjectSessions(path, 5);
@@ -163,6 +155,16 @@ export default function App() {
       }
     }
     setExpandedProjects(newExpanded);
+  }
+
+  // Read on every expand (the main process caches and re-reads only changed files),
+  // without holding up the expand itself (#14, #12).
+  function loadCapabilities(path: string) {
+    setCapabilities((prev) => (prev[path] ? prev : { ...prev, [path]: 'loading' }));
+    window.cockpit
+      .getProjectCapabilities(path)
+      .then((caps) => setCapabilities((prev) => ({ ...prev, [path]: caps })))
+      .catch(() => setCapabilities((prev) => ({ ...prev, [path]: 'error' })));
   }
 
   async function handleLoadMoreSessions(project: Project) {
@@ -191,15 +193,6 @@ export default function App() {
       // Update count
       const allSessions = await window.cockpit.getProjectSessions(project.path);
       setSessionCounts((prev) => ({ ...prev, [project.path]: allSessions.length }));
-      // If no more sessions, collapse and update hasHistory
-      if (sessions.length === 0) {
-        setExpandedProjects((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(project.path);
-          return newSet;
-        });
-        setHasHistory((prev) => ({ ...prev, [project.path]: false }));
-      }
     }
   }
 
@@ -296,10 +289,9 @@ export default function App() {
 
   async function handleExpandProject(project: Project) {
     const path = project.path;
-    if (!hasHistory[path]) return;
-
     const newExpanded = new Set(expandedProjects);
     newExpanded.add(path);
+    loadCapabilities(path);
 
     // Load sessions if not already loaded
     if (!projectSessions[path]) {
@@ -335,7 +327,7 @@ export default function App() {
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       const currentItem = navItems[selectedIndex];
-      if (currentItem?.type === 'project' && hasHistory[currentItem.project.path]) {
+      if (currentItem?.type === 'project') {
         handleExpandProject(currentItem.project);
       }
     } else if (e.key === 'ArrowLeft') {
@@ -403,7 +395,6 @@ export default function App() {
                 const selectedItem = navItems[selectedIndex];
                 const isProjectSelected = selectedItem?.type === 'project' && selectedItem.project.path === project.path;
                 const isExpanded = expandedProjects.has(project.path);
-                const projectHasHistory = hasHistory[project.path];
                 const sessionList = projectSessions[project.path] || [];
                 const totalSessions = sessionCounts[project.path] || 0;
                 const hasMore = sessionList.length < totalSessions;
@@ -416,14 +407,12 @@ export default function App() {
                       onContextMenu={(e) => handleContextMenu(project, e)}
                     >
                       <div className="project-header">
-                        {projectHasHistory && (
-                          <span
-                            className={`expand-triangle ${isExpanded ? 'expanded' : ''}`}
-                            onClick={(e) => handleToggleExpand(project, e)}
-                          >
-                            ▶
-                          </span>
-                        )}
+                        <span
+                          className={`expand-triangle ${isExpanded ? 'expanded' : ''}`}
+                          onClick={(e) => handleToggleExpand(project, e)}
+                        >
+                          ▶
+                        </span>
                         {isActive && <span className="active-indicator">●</span>}
                         <span className="project-name">{name}</span>
                         {project.hasGit && (
@@ -471,6 +460,7 @@ export default function App() {
                             Show more
                           </button>
                         )}
+                        <ProjectCapabilities state={capabilities[project.path]} />
                       </div>
                     )}
                   </div>
