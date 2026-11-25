@@ -2,58 +2,31 @@
 
 ## Development setup
 
+Requires macOS and Node.js 20 (what CI uses).
+
 ```bash
-# Clone the repo
 git clone https://github.com/mcoquet/cockpit.git
 cd cockpit
-
-# Install dependencies
-npm install
-
-# Run in development (watches main + renderer + starts Electron)
-npm run dev
+npm ci          # also sets core.hooksPath to .githooks and rebuilds node-pty for Electron
+npm run dev     # watch main + renderer and start Electron
 ```
 
-## Build commands
+## Commands
 
 ```bash
 npm run dev          # Watch mode + Electron
+npm test             # Build the main process and run the unit tests in test/
 npm run build        # Production build
-npm run package      # Create .app bundle
+npm run package      # Create the .app and DMG in out/
 ```
 
-The packaged app will be in `out/mac-arm64/Cockpit.app`.
+## How the code is organised
 
-## Project structure
-
-```
-src/
-├── main/           # Electron main process
-│   ├── index.ts    # App entry, tray, IPC handlers
-│   ├── claude.ts   # Claude CLI detection
-│   ├── pty.ts      # PTY session management
-│   ├── terminal-window.ts  # Terminal window factory
-│   └── store.ts    # Project persistence
-├── renderer/       # React UI (Vite)
-│   ├── App.tsx     # Tray popup UI
-│   └── Terminal.tsx # xterm.js terminal
-├── preload.ts      # IPC bridge
-└── shared/types.ts # Shared TypeScript types
-```
-
-## Architecture
-
-This is an Electron app with the standard three-process model:
-
-- **Main process** (`src/main/`) - Node.js backend, manages tray/window, handles IPC
-- **Preload** (`src/preload.ts`) - Bridge exposing `window.cockpit` API to renderer
-- **Renderer** (`src/renderer/`) - React UI built with Vite
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): code map, invariants and cross-cutting concerns.
+- [`GLOSSARY.md`](GLOSSARY.md) and [`docs/domain-model.md`](docs/domain-model.md): the vocabulary and how the concepts relate.
+- [`docs/architecture/`](docs/architecture/README.md): system context and container diagrams.
+- [`docs/adr/`](docs/adr/): decisions and why they were made.
 
 ## Debugging
 
-Production logs: `~/Library/Logs/Cockpit/main.log`
-
-## Requirements
-
-- Node.js 18+
-- macOS (Electron targets macOS only)
+Production logs: `~/Library/Logs/Cockpit/main.log`. In `npm run dev`, terminal windows open DevTools.

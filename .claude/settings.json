@@ -1,1 +1,12 @@
-{}
+{
+  "env": { "SUPERPOWERS_DISABLE_TELEMETRY": "1" },
+  "extraKnownMarketplaces": {
+    "sw-eng-doc-mastery": {
+      "source": { "source": "github", "repo": "mcoquet/sw_eng_doc_mastery" }
+    }
+  },
+  "enabledPlugins": {
+    "superpowers@sw-eng-doc-mastery": true,
+    "doc-mastery@sw-eng-doc-mastery": true
+  }
+}
