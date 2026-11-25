@@ -21,10 +21,15 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   from `terminalSessionArgs` in `permission-mode.ts`.
 - `terminal-window.ts`: creates terminal windows, cycles between them, opens the
   external terminal (Cmd+T), and guards each window's navigation with
-  `navigation-guard.ts`.
+  `window-navigation.ts`.
 - `navigation-guard.ts`: decides whether a navigation loads (the window's own page, query
   string ignored), opens in the system browser (http(s) to any non-loopback host) or is
   dropped (everything else). Electron-free and unit-tested.
+- `window-navigation.ts`: a window's own page URL (`rendererPageUrl`) and the guard that
+  keeps it there (`guardWindowNavigation`, installing `will-navigate` and
+  `setWindowOpenHandler` through `classifyNavigation`). Used by the popup, settings,
+  status (via `loadOwnPage` in `index.ts`) and terminal windows. Electron is passed in, so
+  it is unit-tested.
 - `claude.ts`: finds the `claude` binary (known paths, then `which` in a login shell).
 - `env.ts`: builds the environment for every `claude` process by capturing the user's
   interactive shell ([ADR 0005](docs/adr/0005-capture-interactive-shell-env-per-spawn.md)).
@@ -144,12 +149,15 @@ Enter) and `next-run-label.ts` (the schedule editor's "Today 18:30" / "Mon 09:00
 - **Renderers have no Node access.** Every window uses `contextIsolation: true` and
   `nodeIntegration: false`; anything that touches files, processes or the network is an IPC
   handler in `index.ts`.
-- **A terminal window only ever shows its own page**: the packaged `terminal.html`, or
-  `http://localhost:5173/terminal.html` in development. Its `will-navigate` and
-  `setWindowOpenHandler` handlers go through `classifyNavigation` (`navigation-guard.ts`):
-  web links open in the system browser, and other `file://` pages, other loopback (localhost, 127.0.0.1, ::1) pages
-  and other schemes are dropped and logged. The popup, settings and status windows in
-  `index.ts` have no such guard yet.
+- **Every Cockpit window only ever shows its own page**: the popup `index.html`, and
+  `settings.html`, `status.html` and `terminal.html`, packaged or on the Vite dev server
+  (`http://localhost:5173/…`, the popup at its root). Each window gets its page URL from
+  `rendererPageUrl` and its `will-navigate` and `setWindowOpenHandler` handlers from
+  `guardWindowNavigation` (`window-navigation.ts`), which ask `classifyNavigation`
+  (`navigation-guard.ts`): web links open in the system browser, and other `file://`
+  pages (other Cockpit pages included), other loopback (localhost, 127.0.0.1, ::1) pages
+  and other schemes are dropped and logged. `window.open` never creates an Electron
+  window (#69, #76).
 - **Terminal input is routed by window, never by a renderer-supplied ID.** `pty-input` and
   `pty-resize` look up the sender window in the session registry (`findByWindow`).
 - **Every running terminal session is in the session registry.** It is added when its
