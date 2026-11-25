@@ -51,14 +51,18 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
   conversation history per project, add and create project, and `ProjectEditor.tsx`
   (details, permission mode, project environment variables, schedules and their runs).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
-  permission mode badge.
+  permission mode badge, and the custom key handler (Shift+Enter, via `terminal-keys.ts`).
 - `settings.html` → `Settings.tsx` (with `EnvVarsEditor.tsx`).
 - `status.html` → `Status.tsx`.
 
 ### `src/shared/`
 
 `types.ts` (data types and the two bridge APIs) and `env-vars.ts` (pure environment
-variable helpers used by both sides).
+variable helpers used by both sides). Pure renderer helpers live here too, so the `node
+--test` suite can reach them through `dist/main/shared/`: `terminal-keys.ts` (Shift+Enter
+sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline)
+and `path-display.ts` (splits a location so the popup's Create tab truncates it in the
+middle and keeps the last folder visible).
 
 ### Elsewhere
 
