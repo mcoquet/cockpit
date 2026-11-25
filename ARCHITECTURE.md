@@ -46,6 +46,12 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `project-path.ts`: turns a stored project path (home-relative, `~/…` or absolute) into
   an absolute folder, and refuses home, its ancestors and the root as folders to delete.
   Kept free of Electron so it can be unit-tested.
+- `project-capabilities.ts`: a project's capabilities (#14, #12). Reads Claude Code's
+  configuration (MCP servers and their state, skills, agents, commands, enabled plugins)
+  without changing it, behind the read-only `get-project-capabilities` handler, with a
+  per-project cache keyed on the modification times of the files it reads and at most 30 s old.
+  Plugin manifest paths that leave the plugin folder are ignored; walks and file sizes are capped. Malformed files
+  become `problems`, never exceptions. Kept free of Electron so it can be unit-tested.
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.
 - `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.
@@ -78,6 +84,8 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 - `index.html` → `App.tsx`: the popup. Project list with search and keyboard navigation,
   conversation history per project, add and create project, and `ProjectEditor.tsx`
   (details, permission mode, project environment variables, schedules and their runs).
+  Every project can be expanded: under its conversation history, `ProjectCapabilities.tsx`
+  shows the project's capabilities, read on expand (never when the popup opens).
   Multi-line fields use `UndoableTextarea.tsx` rather than a controlled `<textarea>`, so
   Cmd+Z undoes a typed run instead of one character (#33; see the invariant below).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
@@ -93,6 +101,8 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 variable helpers used by both sides). Pure renderer helpers live here too, so the `node
 --test` suite can reach them through `dist/main/shared/`: `terminal-keys.ts` (Shift+Enter
 sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline),
+`capabilities-display.ts` (groups a project's capabilities into the popup's MCP, Skills,
+Agents and Commands lines, folding user-level and plugin items into "+N global"),
 `path-display.ts` (splits a location so the popup's Create tab truncates it in the
 middle and keeps the last folder visible), `shell-quote.ts` (`shellSingleQuote`, also
 used by the main process for Cmd+T) and `dropped-paths.ts` (the text a file drop types

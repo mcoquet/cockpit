@@ -23,7 +23,7 @@ C4Context
   System_Ext(github, "GitHub", "Project repositories; Cockpit releases and Homebrew tap")
 
   Rel(user, cockpit, "Opens projects, conversations and schedules in")
-  Rel(cockpit, claudeCode, "Starts, and reads conversations and usage stats from", "PTY, child process, files")
+  Rel(cockpit, claudeCode, "Starts, and reads conversations, usage stats and configuration from", "PTY, child process, files")
   Rel(claudeCode, anthropic, "Sends prompts to", "HTTPS")
   Rel(cockpit, statusPage, "Reads service status from", "HTTPS/JSON")
   Rel(cockpit, shell, "Captures the environment of", "child process")
@@ -36,7 +36,10 @@ C4Context
 - **Claude Code CLI** is the core dependency. Cockpit finds the `claude` binary
   (`src/main/claude.ts`), runs it in terminal sessions and headless schedule runs, and reads
   Claude Code's conversation files (`~/.claude/projects/`) and usage stats
-  (`~/.claude/stats-cache.json`). It also uses it to generate summaries and to interpret
+  (`~/.claude/stats-cache.json`). For a project's capabilities it reads, without changing,
+  Claude Code's configuration: `~/.claude.json`, the user, project and managed settings
+  files, `~/.claude/plugins/installed_plugins.json` and the enabled plugins' folders, and
+  the project's `.mcp.json` and `.claude/skills`, `agents` and `commands`. It also uses it to generate summaries and to interpret
   natural-language schedules, both with the Haiku model.
 - **Anthropic API** is reached only through Claude Code. When a terminal session ends,
   Cockpit sends the start of that conversation's file (the first 20 KB, plus the last 20 KB
