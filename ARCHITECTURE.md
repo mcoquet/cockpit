@@ -19,8 +19,12 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Its
   arguments (`--continue`, `--resume <id>` or neither, then the permission mode flags) come
   from `terminalSessionArgs` in `permission-mode.ts`.
-- `terminal-window.ts`: creates terminal windows, cycles between them, and opens the
-  external terminal (Cmd+T).
+- `terminal-window.ts`: creates terminal windows, cycles between them, opens the
+  external terminal (Cmd+T), and guards each window's navigation with
+  `navigation-guard.ts`.
+- `navigation-guard.ts`: decides whether a navigation loads (the window's own page, query
+  string ignored), opens in the system browser (http(s) to any non-loopback host) or is
+  dropped (everything else). Electron-free and unit-tested.
 - `claude.ts`: finds the `claude` binary (known paths, then `which` in a login shell).
 - `env.ts`: builds the environment for every `claude` process by capturing the user's
   interactive shell ([ADR 0005](docs/adr/0005-capture-interactive-shell-env-per-spawn.md)).
@@ -122,6 +126,12 @@ Enter).
 - **Renderers have no Node access.** Every window uses `contextIsolation: true` and
   `nodeIntegration: false`; anything that touches files, processes or the network is an IPC
   handler in `index.ts`.
+- **A terminal window only ever shows its own page**: the packaged `terminal.html`, or
+  `http://localhost:5173/terminal.html` in development. Its `will-navigate` and
+  `setWindowOpenHandler` handlers go through `classifyNavigation` (`navigation-guard.ts`):
+  web links open in the system browser, and other `file://` pages, other loopback (localhost, 127.0.0.1, ::1) pages
+  and other schemes are dropped and logged. The popup, settings and status windows in
+  `index.ts` have no such guard yet.
 - **Terminal input is routed by window, never by a renderer-supplied ID.** `pty-input` and
   `pty-resize` look up the sender window in the session registry (`findByWindow`).
 - **Every running terminal session is in the session registry.** It is added when its
