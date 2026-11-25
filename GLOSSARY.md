@@ -29,10 +29,11 @@ One running Claude Code process started by Cockpit for a project, shown in its o
 terminal window. It ends when Claude Code exits or the window closes.
 _Avoid_: session (on its own), PTY, tab
 
-**Active terminal session**:
-The terminal session Cockpit currently associates with a project: the one most recently
-opened for it that is still running.
-_Avoid_: current session, open session
+**Active project**:
+A project with at least one running terminal session. The popup marks it, and the menubar
+icon shows a bullet (●) while any project is active. Cockpit tracks every running terminal
+session of a project, not only the newest.
+_Avoid_: active session, current session, open session
 
 **Conversation**:
 A Claude Code conversation recorded for a project. A terminal session either starts a new
@@ -50,8 +51,9 @@ first message.
 _Avoid_: title, label
 
 **Restore set**:
-The projects that had active terminal sessions the last time Cockpit quit with any running,
-or restarted for an upgrade, kept so they can be reopened together once.
+The projects that had running terminal sessions the last time Cockpit quit with any running,
+or restarted for an upgrade, kept so they can be reopened together once. Each project is listed once, however many
+terminal sessions it had.
 _Avoid_: previous session, last session, workspace
 
 **Upgrade restart**:

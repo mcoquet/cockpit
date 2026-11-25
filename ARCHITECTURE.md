@@ -13,11 +13,12 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 
 - `index.ts`: the app. Tray icon, popup, settings and status windows, the app menu, every
   `ipcMain` handler, global shortcuts, opening terminal sessions
-  (`openSessionForProject`, `openSessionForProjectWithId`), bell notifications, the dock,
+  (`openSessionForProject`, `openSessionForProjectWithId`) and recording them in
+  `terminalSessions` (a `SessionRegistry`), bell notifications, the dock,
   the restore set, upgrade restart and the quit confirmation. Start here.
-- `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Chooses
-  `--continue`, `--resume <id>` or neither, and adds `--permission-mode` (plus
-  `--dangerously-skip-permissions` for `bypassPermissions`).
+- `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Its
+  arguments (`--continue`, `--resume <id>` or neither, then the permission mode flags) come
+  from `terminalSessionArgs` in `permission-mode.ts`.
 - `terminal-window.ts`: creates terminal windows, cycles between them, opens the
   external terminal (Cmd+T), and guards each window's navigation with
   `navigation-guard.ts`.
@@ -53,7 +54,13 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   so nothing in a folder name runs as a command. Electron-free and unit-tested.
 - `permission-mode.ts`: pure helpers for the permission mode a terminal session or
   headless schedule run starts in (explicit choice, else the project's default, else
-  Claude Code's default) and the matching CLI flags for headless runs.
+  Claude Code's default) and the matching CLI flags, for terminal sessions
+  (`terminalSessionArgs`, used by `pty.ts`) and headless runs alike.
+- `session-registry.ts`: `SessionRegistry`, every running terminal session keyed by
+  terminal session id, with lookups by window and by project, the count, the per-project
+  view the popup reads (`sessions-changed`, `get-active-sessions`: newest terminal session
+  per project) and the restore set's project list (each project once). Electron-free and
+  unit-tested.
 
 ### `src/preload.ts`
 
@@ -121,7 +128,10 @@ Enter).
   and other schemes are dropped and logged. The popup, settings and status windows in
   `index.ts` have no such guard yet.
 - **Terminal input is routed by window, never by a renderer-supplied ID.** `pty-input` and
-  `pty-resize` look up the sender window in `windowToSession`.
+  `pty-resize` look up the sender window in the session registry (`findByWindow`).
+- **Every running terminal session is in the session registry.** It is added when its
+  window is created and removed when the window closes or a failed continue is replaced;
+  nothing keeps a separate per-project record (#58).
 - **A terminal window and its PTY end together.** Closing the window kills the PTY; the PTY
   exiting closes the window ([ADR 0001](docs/adr/0001-embedded-terminal-spawns-claude-directly.md)).
 - **Every terminal session's permission mode comes from `resolvePermissionMode`.**
