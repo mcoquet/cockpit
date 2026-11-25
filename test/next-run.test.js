@@ -65,24 +65,49 @@ test('label: a week or more away gives the date', () => {
   assert.equal(formatNextRun(new Date('2027-01-01T00:00:00Z'), WED), 'Fri 1 Jan 2027 00:00');
 });
 
-// node-cron, which fires the schedules, needs BOTH day fields to match when
-// both are restricted (standard cron and cron-parser use either). The next run
-// must follow node-cron.
-test('day of month and day of week both set: both must match, as node-cron fires', () => {
-  // The next 1st of a month that is a Monday
+// The next run must be when node-cron, which fires the schedules, would fire,
+// including where node-cron reads a cron differently from standard cron.
+const path = require('node:path');
+// node-cron's matcher is internal; reach it by file for these checks only.
+const { TimeMatcher } = require(path.join(require.resolve('node-cron'), '../time/time-matcher.js'));
+
+test('day of month and day of week both set: node-cron needs both to match', () => {
   assert.equal(nextRunAt('0 9 1 * 1', WED).toISOString(), '2027-02-01T09:00:00.000Z');
   assert.equal(nextRunAt('0 9 13 * FRI', WED).toISOString(), '2027-08-13T09:00:00.000Z');
 });
 
-test('the next run is a time node-cron itself would fire at', () => {
-  // node-cron's matcher is internal; reach it by file for this check only.
-  const path = require('node:path');
-  const { TimeMatcher } = require(path.join(require.resolve('node-cron'), '../time/time-matcher.js'));
-  for (const cron of ['0 9 * * 1-5', '30 18 * * *', '0 9 1 * *', '0 9 1 * 1', '*/15 * * * *',
-    '0 0 29 2 *', '0 12 * 6 SUN', '0 9 1,15 * 1-5', '30 0 9 * * *']) {
+test('full day and month names, as node-cron accepts', () => {
+  assert.equal(nextRunAt('0 9 * * Sunday', WED).toISOString(), '2026-11-29T09:00:00.000Z');
+  assert.equal(nextRunAt('0 9 1 January *', WED).toISOString(), '2027-01-01T09:00:00.000Z');
+});
+
+test('7 and backwards ranges in day of week follow node-cron', () => {
+  // node-cron reads 5-7 as 0-5 (Sun to Fri): Thursday is next
+  assert.equal(nextRunAt('0 9 * * 5-7', WED).toISOString(), '2026-11-26T09:00:00.000Z');
+  // ... and 0-7 as Sunday only
+  assert.equal(nextRunAt('0 9 * * 0-7', WED).toISOString(), '2026-11-29T09:00:00.000Z');
+  assert.equal(nextRunAt('0 9 * * 7,0', WED).toISOString(), '2026-11-29T09:00:00.000Z');
+});
+
+test('a step without a range means just that value in node-cron', () => {
+  assert.equal(nextRunAt('5/15 * * * *', WED).toISOString(), '2026-11-25T10:05:00.000Z');
+  assert.equal(nextRunAt('0 9 1/2 * *', WED).toISOString(), '2026-12-01T09:00:00.000Z');
+});
+
+test('the next run is the first time node-cron itself would fire', () => {
+  const crons = ['0 9 * * 1-5', '30 18 * * *', '0 9 1 * *', '0 9 1 * 1', '*/15 * * * *',
+    '0 0 29 2 *', '0 12 * 6 SUN', '0 9 1,15 * 1-5', '30 0 9 * * *', '0 9 * * 1#2',
+    '0 9 * * sat-sun', '0 9 * * mon-sun', '0 9 * * 7-7', '0 9 1 * 1-7', '* * * * *'];
+  for (const cron of crons) {
     const next = nextRunAt(cron, WED);
-    assert.ok(next, cron);
-    assert.ok(next > WED, cron);
-    assert.ok(new TimeMatcher(cron).match(next), `${cron} → ${next.toISOString()}`);
+    assert.ok(next && next > WED, cron);
+    const matcher = new TimeMatcher(cron);
+    assert.ok(matcher.match(next), `${cron} → ${next.toISOString()} is not a node-cron match`);
+    // No earlier minute (or second, for six-field crons) matches, within 8 days
+    const step = cron.split(' ').length === 6 ? 1000 : 60_000;
+    const stop = Math.min(next.getTime(), WED.getTime() + 8 * 86_400_000);
+    for (let t = WED.getTime() + step; t < stop; t += step) {
+      assert.ok(!matcher.match(new Date(t)), `${cron}: node-cron fires earlier, at ${new Date(t).toISOString()}`);
+    }
   }
 });

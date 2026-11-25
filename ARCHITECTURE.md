@@ -37,12 +37,13 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   and deleting a removed project's schedules (`deleteSchedulesForProject`).
 - `job-registry.ts`: the scheduler's active node-cron jobs keyed by schedule ID
   (register, unregister, clear). Electron-free and unit-tested with real node-cron.
-- `next-run.ts`: when node-cron would next fire a cron expression (`nextRunAt`). Uses
-  cron-parser after node-cron's own validation, because node-cron's `getNextRun()` needs a
-  started task and its walker is wrong for weekdays; corrects for node-cron requiring both
-  day of month and day of week to match when both are set. Backs
-  `scheduler.getNextRunTime` and the `scheduler:next-run` IPC. Electron-free and
-  unit-tested, including against node-cron's own matcher.
+- `next-run.ts`: when node-cron would next fire a cron expression (`nextRunAt`), worked out
+  from node-cron's own conversion of the expression into value sets (loaded by file, since
+  node-cron's exports don't expose it), so it agrees with node-cron's quirks (full day
+  names, `7` in ranges, `5/15`, both day fields having to match) and skips local times lost
+  to a clock change. node-cron's `getNextRun()` needs a started task and is wrong for
+  weekdays. Backs `scheduler.getNextRunTime` and the `scheduler:next-run` IPC.
+  Electron-free and unit-tested against node-cron's own matcher.
 - `project-removal.ts`: which schedules and schedule runs go with a removed project, the
   remove dialog's checkbox label and schedule list, and the remove dialogs' flow
   (`askRemoveProject`, given `dialog.showMessageBox`; Cancel in any of them, the "Delete
