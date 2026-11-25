@@ -16,7 +16,8 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   (`openSessionForProject`, `openSessionForProjectWithId`), bell notifications, the dock,
   the restore set, upgrade restart and the quit confirmation. Start here.
 - `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Chooses
-  `--continue`, `--resume <id>` or neither, and adds `--permission-mode`.
+  `--continue`, `--resume <id>` or neither, and adds `--permission-mode` (plus
+  `--dangerously-skip-permissions` for `bypassPermissions`).
 - `terminal-window.ts`: creates terminal windows, cycles between them, and opens the
   external terminal (Cmd+T).
 - `claude.ts`: finds the `claude` binary (known paths, then `which` in a login shell).
@@ -39,7 +40,8 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 
 Exposes `window.cockpit` (popup, settings and status windows) and `window.terminal`
 (terminal windows). Each method is one `ipcRenderer.invoke`/`send` to a channel handled in
-`index.ts`. The types for both live in `src/shared/types.ts` (`CockpitAPI`, `TerminalAPI`).
+`index.ts`, or an `ipcRenderer.on` subscription to an event the main process sends
+(`schedule-run-started` comes from `scheduler.ts`). The types for both live in `src/shared/types.ts` (`CockpitAPI`, `TerminalAPI`).
 
 ### `src/renderer/`: windows
 
@@ -83,9 +85,9 @@ variable helpers used by both sides).
   sessions, headless schedule runs, summaries and schedule interpretation all go through
   it, so they all see the user's shell environment plus Cockpit's environment variables.
 - **Project paths are stored relative to home**
-  ([ADR 0002](docs/adr/0002-project-identity-is-home-relative-path.md)) and expanded at the
-  point of use. The expansion is currently written out in several places (`pty.ts`,
-  `sessions.ts`, `scheduler-executor.ts`, `terminal-window.ts`, `index.ts`) with slightly
+  ([ADR 0002](docs/adr/0002-project-identity-is-home-relative-path.md)), or absolute for
+  folders outside it, and expanded at the point of use. The expansion is currently written out in several places (`pty.ts`,
+  `store.ts`, `sessions.ts`, `scheduler-executor.ts`, `terminal-window.ts`, `index.ts`) with slightly
   different rules.
 - **Only the main process writes Cockpit's data.** Cockpit never writes Claude Code's data
   except to delete a conversation file the user asked to delete.
@@ -98,7 +100,7 @@ variable helpers used by both sides).
   Stored settings are merged over defaults on read, so new fields need only a default.
 - **Development vs production:** `NODE_ENV=development` (set by `npm run dev`) loads the
   renderers from the Vite dev server on `localhost:5173`, shows Ω instead of λ in the tray,
-  adds "(Dev)" to window titles, opens DevTools, skips the single-instance lock (so dev and
+  adds "(Dev)" to window titles, opens DevTools for terminal windows, skips the single-instance lock (so dev and
   the installed app can run side by side), skips the launch-at-login registration, and
   skips the upgrade watcher.
 - **Upgrade restart:** in production, Cockpit watches `/Applications/Cockpit.app`; when the

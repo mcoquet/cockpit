@@ -56,8 +56,8 @@ C4Container
   (`contextIsolation`, no `nodeIntegration`) and reach the main process only through the
   `window.cockpit` and `window.terminal` APIs in `src/preload.ts`.
 - **projects.json** and **settings.json**: electron-store files in
-  `~/Library/Application Support/cockpit/`. Terminal sessions and queued schedule runs
-  live only in memory.
+  `~/Library/Application Support/cockpit/`. Terminal sessions live only in memory, and so does
+  the queue of waiting schedule runs (their records are saved as "queued").
 - **summaries/**: `<userData>/summaries/<encoded project path>/<conversation id>.summary`,
-  kept in Cockpit's app data so they go away with the app. Conversations themselves stay in
+  kept in Cockpit's app data rather than Claude Code's, so the cask's `zap` removes them. Conversations themselves stay in
   Claude Code's own folder; Cockpit only reads them, or deletes one when the user asks.

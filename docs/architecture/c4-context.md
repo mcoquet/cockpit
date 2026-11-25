@@ -19,7 +19,7 @@ C4Context
   System_Ext(statusPage, "Anthropic Status Page", "status.anthropic.com service status")
   System_Ext(shell, "User's login shell", "zsh/bash with the user's rc files")
   System_Ext(macos, "macOS", "Notifications, Calendar, Reminders, System Events, login items")
-  System_Ext(extTerminal, "External terminal app", "Terminal, iTerm, Warp, Kitty or another")
+  System_Ext(extTerminal, "External terminal", "Terminal, iTerm, Warp, Kitty or another")
   System_Ext(github, "GitHub", "Project repositories; Cockpit releases and Homebrew tap")
 
   Rel(user, cockpit, "Opens projects, conversations and schedules in")
@@ -39,8 +39,9 @@ C4Context
   (`~/.claude/stats-cache.json`). It also uses it to generate summaries and to interpret
   natural-language schedules, both with the Haiku model.
 - **Anthropic API** is reached only through Claude Code. When a terminal session ends,
-  Cockpit sends the first and last 20 KB of that conversation's file to Claude Code to
-  generate a summary, so part of every conversation goes to the model a second time.
+  Cockpit sends the start of that conversation's file (the first 20 KB, plus the last 20 KB
+  when the file is over 40 KB) to Claude Code to generate a summary, so part of every
+  conversation goes to the model a second time.
 - **Anthropic Status Page**: `GET https://status.anthropic.com/api/v2/status.json` for the
   status window. It is the only network call Cockpit makes itself.
 - **User's login shell** is run as `$SHELL -ilc` before every Claude Code process starts, so

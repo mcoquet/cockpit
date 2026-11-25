@@ -31,7 +31,7 @@ That's it. No `cd`-ing around. No hunting for the right terminal tab.
 | Shortcut | Action |
 |----------|--------|
 | **Cmd+`** | Cycle through terminal windows (global) |
-| **Cmd+N** | New conversation in the focused terminal's project, or open the project list |
+| **Cmd+N** | New conversation in the last-used terminal's project, or open the project list if no terminal is open |
 | **Cmd+← / Cmd+→** | Previous / next terminal window |
 | **Cmd+T** | Open the project folder in your external terminal (set in Settings) |
 | **Cmd+Shift+T** | Reopen the projects open when Cockpit last quit |
@@ -41,7 +41,7 @@ That's it. No `cd`-ing around. No hunting for the right terminal tab.
 | **→ / ←** | Expand / collapse a project's conversation history |
 | **Enter** | Open the selection |
 | **Shift+Tab** | Switch between search and create project |
-| **Escape** | Close popup |
+| **Escape** | Leave the search box; press again to close the popup |
 | **Type** | Filter projects |
 
 In the terminal, **Option+click** a file path to open it.
