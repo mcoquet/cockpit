@@ -2,6 +2,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs';
 import type { Project, Schedule, ScheduleRun } from '../shared/types';
+import { partitionProjectSchedules } from './project-removal';
 
 // Use require for electron-store due to ESM/CJS compatibility
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -155,6 +156,23 @@ export function deleteSchedule(id: string): boolean {
   const runs = getScheduleRuns();
   store.set('scheduleRuns', runs.filter((r) => r.scheduleId !== id));
   return true;
+}
+
+/**
+ * Delete every schedule of the project at `projectPath` (stored path) and all
+ * their schedule runs. Returns the deleted schedule IDs. Unregistering their
+ * cron jobs is the scheduler's job (`scheduler.deleteSchedulesForProject`).
+ */
+export function deleteSchedulesForProject(projectPath: string): string[] {
+  const { keptSchedules, keptRuns, removedIds } = partitionProjectSchedules(
+    getSchedules(),
+    store.get('scheduleRuns') as ScheduleRun[],
+    projectPath
+  );
+  if (removedIds.length === 0) return [];
+  store.set('schedules', keptSchedules);
+  store.set('scheduleRuns', keptRuns);
+  return removedIds;
 }
 
 export function getScheduleRuns(scheduleId?: string, limit = 100): ScheduleRun[] {

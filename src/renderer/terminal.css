@@ -189,3 +189,20 @@ body.dev {
   color: #fff;
   font-weight: 600;
 }
+
+/* Files dragged over the window (#5): full opacity even when the window is
+   unfocused (dragging from Finder), with a blue outline drawn above xterm. */
+.terminal-wrapper.dragging-files {
+  opacity: 1;
+}
+
+.terminal-wrapper.dragging-files::after {
+  content: '';
+  position: fixed;
+  inset: 38px 0 0 0;
+  border: 2px solid #0a84ff;
+  border-radius: 4px;
+  background: rgba(10, 132, 255, 0.08);
+  pointer-events: none;
+  z-index: 10;
+}

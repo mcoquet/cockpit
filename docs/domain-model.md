@@ -9,9 +9,7 @@ defined in [`GLOSSARY.md`](../GLOSSARY.md).
 ```mermaid
 classDiagram
   %% See docs/adr/0002-project-identity-is-home-relative-path.md
-  Project "1" --> "0..*" TerminalSession : runs
-  Project "1" --> "0..1" ActiveTerminalSession : tracks
-  ActiveTerminalSession "0..1" --> "1" TerminalSession : is
+  Project "1" --> "0..*" TerminalSession : runs and tracks
   Project "1" --> "0..*" Conversation : has
   TerminalSession "0..*" --> "0..1" Conversation : carries on
   Conversation "1" --> "0..1" Summary : described by
@@ -27,9 +25,8 @@ classDiagram
 Diagram names are the glossary terms without spaces.
 
 - A **Project** runs zero or more **Terminal sessions** at once, each in its own window.
-- A **Project** tracks at most one **Active terminal session**: the most recently opened
-  one that is still running. Older terminal sessions of the same project keep running but
-  are no longer tracked.
+- A **Project** tracks every one of its running **Terminal sessions**, however many
+  windows it has open. It is an **Active project** while at least one runs.
 - A **Project** has zero or more **Conversations**, recorded by Claude Code, not by Cockpit.
 - A **Terminal session** carries on at most one **Conversation**: a new one, the most recent
   one (continue), or a chosen one from the conversation history (resume).
@@ -69,19 +66,27 @@ Diagram names are the glossary terms without spaces.
   deletes its summary.
 - A schedule fires only while it is enabled and Cockpit is running.
 - Deleting a schedule deletes all its schedule runs.
+- Removing a project deletes its schedules and their schedule runs, and stops their cron
+  jobs and queued runs, unless the user unticks "Also delete N schedules" in the remove
+  dialog; unticked, the schedules are kept unchanged and keep firing. A schedule run
+  already going when its schedule is deleted may finish, but leaves no record and starts
+  no queued run. A project with no schedules is removed without being asked about them.
 - At most 1,000 schedule runs are kept across all schedules; the oldest are dropped first.
 - When a schedule with queue behaviour **skip** comes due while its previous run is still
   going, the new schedule run is recorded as failed ("Skipped") and does not run.
-- Cockpit does not quit while a project has an active terminal session unless the user
-  confirms; confirming saves the restore set. An upgrade restart does not ask, but saves the
+- Cockpit does not quit while any terminal session is running unless the user confirms;
+  the confirmation counts terminal sessions, not projects. Confirming saves the restore set. An upgrade restart does not ask, but saves the
   restore set first.
+- The restore set lists each project at most once, even if it had several terminal
+  sessions running; reopening it opens one terminal session per project.
 - The restore set is cleared once it has been reopened.
+- Window → "Open in External Terminal" (Cmd+T) and Cmd+N act on the project of the
+  terminal window last used, whichever of a project's windows that is.
 
 ### Current behaviour worth knowing
 
 These follow from the code as built; they are gaps, not rules.
 
-- Removing a project does not remove its schedules: they stay enabled and keep firing.
 - **Catch-up** is stored on a schedule but nothing acts on it; missed occurrences are never
   run.
 - Queued schedule runs wait only in memory. If Cockpit quits first, they stay "queued" in

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { Project, ActiveSession, AppSettings, ClaudeStats, ServiceStatus, CockpitAPI, TerminalAPI, ContextMenuOptions, SessionInfo, Schedule, ScheduleRun, ProjectCapabilities } from './shared/types';
 
 const cockpitApi: CockpitAPI = {
@@ -100,6 +100,8 @@ const terminalApi: TerminalAPI = {
   changePermissionMode: (mode: string) => {
     ipcRenderer.send('change-permission-mode', mode);
   },
+  // Electron removed File.path; this is how a renderer learns a dropped file's path (#5).
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
 };
 
 contextBridge.exposeInMainWorld('cockpit', cockpitApi);

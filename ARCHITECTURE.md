@@ -13,11 +13,12 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 
 - `index.ts`: the app. Tray icon, popup, settings and status windows, the app menu, every
   `ipcMain` handler, global shortcuts, opening terminal sessions
-  (`openSessionForProject`, `openSessionForProjectWithId`), bell notifications, the dock,
+  (`openSessionForProject`, `openSessionForProjectWithId`) and recording them in
+  `terminalSessions` (a `SessionRegistry`), bell notifications, the dock,
   the restore set, upgrade restart and the quit confirmation. Start here.
-- `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Chooses
-  `--continue`, `--resume <id>` or neither, and adds `--permission-mode` (plus
-  `--dangerously-skip-permissions` for `bypassPermissions`).
+- `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Its
+  arguments (`--continue`, `--resume <id>` or neither, then the permission mode flags) come
+  from `terminalSessionArgs` in `permission-mode.ts`.
 - `terminal-window.ts`: creates terminal windows, cycles between them, and opens the
   external terminal (Cmd+T).
 - `claude.ts`: finds the `claude` binary (known paths, then `which` in a login shell).
@@ -28,7 +29,12 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   path>/*.jsonl`, deletes conversations, and generates and caches summaries.
 - `store.ts`: `projects.json` (projects, schedules, schedule runs, restore set).
 - `settings.ts`: `settings.json`, the user's global shortcut and launch at login.
-- `scheduler.ts`: schedule CRUD, node-cron jobs, queue behaviour, schedule-run records.
+- `scheduler.ts`: schedule CRUD, node-cron jobs, queue behaviour, schedule-run records,
+  and deleting a removed project's schedules (`deleteSchedulesForProject`).
+- `job-registry.ts`: the scheduler's active node-cron jobs keyed by schedule ID
+  (register, unregister, clear). Electron-free and unit-tested with real node-cron.
+- `project-removal.ts`: which schedules and schedule runs go with a removed project, and
+  the remove dialog's checkbox label and schedule list. Electron-free and unit-tested.
 - `scheduler-executor.ts`: runs a schedule run (interactive or headless) and turns a
   natural-language request into a schedule with Claude Code.
 - `claude-stats.ts`: usage stats from `~/.claude/stats-cache.json`.
@@ -39,18 +45,27 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.
 - `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.
-  The folder path is single-quoted for the shell, then escaped as an AppleScript string,
+  The folder path is single-quoted for the shell (`shellSingleQuote`, now in
+  `src/shared/shell-quote.ts` and re-exported here), then escaped as an AppleScript string,
   so nothing in a folder name runs as a command. Electron-free and unit-tested.
 - `permission-mode.ts`: pure helpers for the permission mode a terminal session or
   headless schedule run starts in (explicit choice, else the project's default, else
-  Claude Code's default) and the matching CLI flags for headless runs.
+  Claude Code's default) and the matching CLI flags, for terminal sessions
+  (`terminalSessionArgs`, used by `pty.ts`) and headless runs alike.
+- `session-registry.ts`: `SessionRegistry`, every running terminal session keyed by
+  terminal session id, with lookups by window and by project, the count, the per-project
+  view the popup reads (`sessions-changed`, `get-active-sessions`: newest terminal session
+  per project) and the restore set's project list (each project once). Electron-free and
+  unit-tested.
 
 ### `src/preload.ts`
 
 Exposes `window.cockpit` (popup, settings and status windows) and `window.terminal`
 (terminal windows). Each method is one `ipcRenderer.invoke`/`send` to a channel handled in
 `index.ts`, or an `ipcRenderer.on` subscription to an event the main process sends
-(`schedule-run-started` comes from `scheduler.ts`). The types for both live in `src/shared/types.ts` (`CockpitAPI`, `TerminalAPI`).
+(`schedule-run-started` comes from `scheduler.ts`). The one exception is
+`window.terminal.getPathForFile`, which calls Electron's `webUtils.getPathForFile` in the
+preload itself (Electron no longer gives renderers `File.path`). The types for both live in `src/shared/types.ts` (`CockpitAPI`, `TerminalAPI`).
 
 ### `src/renderer/`: windows
 
@@ -59,8 +74,12 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 - `index.html` → `App.tsx`: the popup. Project list with search and keyboard navigation,
   conversation history per project, add and create project, and `ProjectEditor.tsx`
   (details, permission mode, project environment variables, schedules and their runs).
+  Multi-line fields use `UndoableTextarea.tsx` rather than a controlled `<textarea>`, so
+  Cmd+Z undoes a typed run instead of one character (#33; see the invariant below).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
-  permission mode badge, and the custom key handler (Shift+Enter, via `terminal-keys.ts`).
+  permission mode badge, the custom key handler (Shift+Enter, via `terminal-keys.ts`), and
+  file drops: dropping files or folders types their quoted paths (via `dropped-paths.ts`),
+  and every drop is `preventDefault`ed so the window never navigates to a dropped file.
 - `settings.html` → `Settings.tsx` (with `EnvVarsEditor.tsx`).
 - `status.html` → `Status.tsx`.
 
@@ -69,14 +88,21 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 `types.ts` (data types and the two bridge APIs) and `env-vars.ts` (pure environment
 variable helpers used by both sides). Pure renderer helpers live here too, so the `node
 --test` suite can reach them through `dist/main/shared/`: `terminal-keys.ts` (Shift+Enter
-sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline)
-and `path-display.ts` (splits a location so the popup's Create tab truncates it in the
-middle and keeps the last folder visible).
+sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline),
+`path-display.ts` (splits a location so the popup's Create tab truncates it in the
+middle and keeps the last folder visible), `shell-quote.ts` (`shellSingleQuote`, also
+used by the main process for Cmd+T) and `dropped-paths.ts` (the text a file drop types
+into a terminal window: each path single-quoted, space-separated, one trailing space, no
+Enter).
 
 ### Elsewhere
 
 - `test/`: `node --test` unit tests for the Electron-free modules, run against the compiled
   output in `dist/main/` (`npm test` builds first).
+  `test/electron/undo/` is a separate Electron check (Linux, `xvfb-run`; not part of `npm
+  test`): it loads the built popup and settings pages with a stubbed `window.cockpit`, types
+  into every text field and counts the undos needed to get back (`test/electron/undo/run.sh`
+  after `npm run build:renderer`).
 - `.githooks/pre-push`: when a `v*` tag is pushed, makes `package.json` match the tag;
   see Releases in `CLAUDE.md`.
 - `.github/workflows/release.yml`: on a `v*` tag, runs `npm test` (a failure stops the
@@ -92,7 +118,10 @@ middle and keeps the last folder visible).
   `nodeIntegration: false`; anything that touches files, processes or the network is an IPC
   handler in `index.ts`.
 - **Terminal input is routed by window, never by a renderer-supplied ID.** `pty-input` and
-  `pty-resize` look up the sender window in `windowToSession`.
+  `pty-resize` look up the sender window in the session registry (`findByWindow`).
+- **Every running terminal session is in the session registry.** It is added when its
+  window is created and removed when the window closes or a failed continue is replaced;
+  nothing keeps a separate per-project record (#58).
 - **A terminal window and its PTY end together.** Closing the window kills the PTY; the PTY
   exiting closes the window ([ADR 0001](docs/adr/0001-embedded-terminal-spawns-claude-directly.md)).
 - **Every terminal session's permission mode comes from `resolvePermissionMode`.**
@@ -112,6 +141,11 @@ middle and keeps the last folder visible).
 - **A folder path never reaches a shell unquoted.** Cmd+T hands the path to Warp, Kitty
   and custom apps as an `open -a` argument, and to Terminal and iTerm only through
   `external-terminal-script.ts`.
+- **Text fields keep the browser's undo.** Cmd+Z and Cmd+Shift+Z come from the Edit menu's
+  `undo`/`redo` roles, which act on Chromium's own undo stack; nothing in the renderers keeps
+  its own. A controlled React `<textarea>` breaks that stack's grouping (React rewrites its
+  text child on every change), so textareas go through `UndoableTextarea`. `<input>` fields
+  are not affected and stay ordinary controlled inputs.
 - **Only the main process writes Cockpit's data.** Cockpit never writes Claude Code's data
   except to delete a conversation file the user asked to delete.
 
