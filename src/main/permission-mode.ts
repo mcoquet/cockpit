@@ -17,7 +17,8 @@ export function resolvePermissionMode(
 
 /**
  * CLI flags for a permission mode. 'default' adds none; bypassPermissions also
- * needs --dangerously-skip-permissions. Same rule as spawnClaude in pty.ts.
+ * needs --dangerously-skip-permissions. spawnClaude in pty.ts uses it through
+ * terminalSessionArgs (#63).
  */
 export function permissionModeArgs(mode: PermissionMode | undefined): string[] {
   if (!mode || mode === 'default') return [];
@@ -29,4 +30,23 @@ export function permissionModeArgs(mode: PermissionMode | undefined): string[] {
 /** Arguments for a headless schedule run: `claude [mode flags] -p <prompt>`. */
 export function headlessScheduleArgs(prompt: string, mode: PermissionMode | undefined): string[] {
   return [...permissionModeArgs(mode), '-p', prompt];
+}
+
+/**
+ * Arguments for a terminal session's `claude` process: `--resume <id>` for a
+ * chosen conversation, else `--continue` unless continueSession is false (a
+ * new conversation), then the permission mode flags.
+ */
+export function terminalSessionArgs(options: {
+  continueSession?: boolean;
+  resumeSessionId?: string;
+  permissionMode?: PermissionMode;
+}): string[] {
+  let args: string[] = [];
+  if (options.resumeSessionId) {
+    args = ['--resume', options.resumeSessionId];
+  } else if (options.continueSession !== false) {
+    args = ['--continue'];
+  }
+  return [...args, ...permissionModeArgs(options.permissionMode)];
 }

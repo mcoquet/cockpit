@@ -3,6 +3,7 @@ import path from 'path';
 import type { IPty } from 'node-pty';
 import log from 'electron-log';
 import { getClaudeSpawnEnv } from './env';
+import { terminalSessionArgs } from './permission-mode';
 import type { PermissionMode, EnvVars } from '../shared/types';
 
 // node-pty is a native module that needs require()
@@ -41,21 +42,7 @@ export async function spawnClaude(
   const id = generateSessionId();
   const fullPath = path.join(os.homedir(), projectPath);
 
-  // Use --resume for specific session, --continue for most recent, or nothing for new
-  let args: string[] = [];
-  if (options?.resumeSessionId) {
-    args = ['--resume', options.resumeSessionId];
-  } else if (options?.continueSession !== false) {
-    args = ['--continue'];
-  }
-
-  // Add permission mode flag
-  if (options?.permissionMode && options.permissionMode !== 'default') {
-    args.push('--permission-mode', options.permissionMode);
-    if (options.permissionMode === 'bypassPermissions') {
-      args.push('--dangerously-skip-permissions');
-    }
-  }
+  const args = terminalSessionArgs(options ?? {});
 
   const env = await getClaudeSpawnEnv(claudePath, fullPath, options?.envVars);
 
