@@ -8,6 +8,7 @@ import type { SessionInfo } from '../shared/types';
 import { findClaudeBinary } from './claude';
 import { getClaudeSpawnEnv } from './env';
 import { getEnvVarsForProject } from './session-env';
+import { encodeProjectPath, expandProjectPath } from './project-path';
 
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 
@@ -18,26 +19,6 @@ const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 function getSummariesDir(projectPath: string): string {
   const encoded = encodeProjectPath(projectPath);
   return path.join(app.getPath('userData'), 'summaries', encoded);
-}
-
-/**
- * Encode a project path to Claude's folder naming convention.
- * Example: /Users/miguel/projects/cockpit -> -Users-miguel-projects-cockpit
- * Handles: absolute paths (/...), tilde paths (~...), and relative paths (Documents/...)
- */
-export function encodeProjectPath(projectPath: string): string {
-  let fullPath: string;
-  if (projectPath.startsWith('/')) {
-    // Absolute path
-    fullPath = projectPath;
-  } else if (projectPath.startsWith('~')) {
-    // Tilde path - expand ~
-    fullPath = path.join(os.homedir(), projectPath.slice(1));
-  } else {
-    // Relative path (e.g., Documents/projects/cockpit) - prepend home dir
-    fullPath = path.join(os.homedir(), projectPath);
-  }
-  return '-' + fullPath.slice(1).replace(/[\/\.]/g, '-');
 }
 
 /**
@@ -173,7 +154,7 @@ export async function generateSessionSummary(projectPath: string, claudeSessionI
 
   const child = spawn(claudePath, ['--model', 'haiku', '--print'], {
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: await getClaudeSpawnEnv(claudePath, path.join(os.homedir(), projectPath), getEnvVarsForProject()),
+    env: await getClaudeSpawnEnv(claudePath, expandProjectPath(projectPath), getEnvVarsForProject()),
   });
 
   // Write prompt to stdin and close it
