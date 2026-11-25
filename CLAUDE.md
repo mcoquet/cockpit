@@ -141,10 +141,14 @@ gh issue view <number>               # Review the issue
 # Only then: commit, push, close issue with gh issue close <number>
 ```
 
-## Superpowers Skills
+## Methodology
 
-The `obra/superpowers` skills are installed directly in `.claude/skills/` (committed to the repo). Project-specific outputs:
+This project uses the `doc-mastery` plugin (Superpowers plus living documentation; see `.claude/settings.json`). Its rules load at session start. This file records only what is specific to this project and wins over the plugin's rules.
 
-- **Design docs**: `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-- **Implementation plans**: `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
-- **Worktrees**: `.worktrees/` (already in .gitignore)
+## Setup and test commands
+
+- Install / setup: `npm ci` (also sets `core.hooksPath` to `.githooks` and rebuilds `node-pty` for Electron)
+- Run the full test suite: `npm test` (builds the main process, then runs `node --test` over `test/**/*.test.js`)
+- Run a single test: `npm run build:main && node --test test/<file>.test.js` (add `--test-name-pattern="<name>"` for one case)
+- Lint / format: none configured
+- Render-check Mermaid diagrams (C4, domain model): none set up yet; check syntax against the `c4-architecture` skill's `references/c4-syntax.md`
