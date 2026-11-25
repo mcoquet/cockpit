@@ -3,6 +3,7 @@ import type { Project, Schedule, ParsedSchedule, ScheduleRun, PermissionMode } f
 import { envVarsToRows, rowsToEnvVars } from '../shared/env-vars';
 import type { EnvVarRow } from '../shared/env-vars';
 import EnvVarsEditor from './EnvVarsEditor';
+import UndoableTextarea from './UndoableTextarea';
 
 interface Props {
   project: Project;
@@ -380,7 +381,7 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                 <div className="editor-field">
                   <label>Describe your schedule</label>
                   <div className="nl-input-row">
-                    <textarea
+                    <UndoableTextarea
                       value={nlInput}
                       onChange={(e) => setNlInput(e.target.value)}
                       placeholder="e.g., every weekday at 9am check for security issues"
@@ -458,7 +459,7 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                 </div>
                 <div className="editor-field">
                   <label>Prompt</label>
-                  <textarea value={schedPrompt} onChange={(e) => setSchedPrompt(e.target.value)} placeholder="Run tests and report any failures" rows={3} />
+                  <UndoableTextarea value={schedPrompt} onChange={(e) => setSchedPrompt(e.target.value)} placeholder="Run tests and report any failures" rows={3} />
                 </div>
                 <div className="editor-field">
                   <label>Queue Behavior</label>

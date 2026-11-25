@@ -16,6 +16,7 @@ import * as scheduler from './scheduler';
 import * as schedulerExecutor from './scheduler-executor';
 import { getEnvVarsForProject } from './session-env';
 import { expandProjectPath, isDeletableProjectFolder } from './project-path';
+import { buildRemoveDialogText } from './project-removal';
 import type { AppSettings } from '../shared/types';
 import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
@@ -257,22 +258,32 @@ function registerIpcHandlers(): void {
     const canDeleteFolder =
       fs.existsSync(expandedPath) && isDeletableProjectFolder(expandedPath, app.getPath('home'));
 
+    // The project's schedules are deleted with it unless the user unticks the box (#53)
+    const scheduleText = buildRemoveDialogText(scheduler.listSchedules(projectPath));
+    const scheduleCheckbox = scheduleText
+      ? { checkboxLabel: scheduleText.checkboxLabel, checkboxChecked: true }
+      : {};
+    const scheduleDetail = scheduleText ? `\n\n${scheduleText.detail}` : '';
+    let deleteSchedules = false;
+
     if (canDeleteFolder) {
       // Ask user if they want to delete the folder too
-      const { response } = await dialog.showMessageBox({
+      const { response, checkboxChecked } = await dialog.showMessageBox({
         type: 'question',
         buttons: ['Remove from Cockpit', 'Delete Folder', 'Cancel'],
         defaultId: 0,
         cancelId: 2,
         title: 'Remove Project',
         message: 'How would you like to remove this project?',
-        detail: `Project: ${expandedPath}`,
+        detail: `Project: ${expandedPath}${scheduleDetail}`,
+        ...scheduleCheckbox,
       });
 
       if (response === 2) {
         // User cancelled
         return;
       }
+      deleteSchedules = scheduleText !== null && checkboxChecked;
 
       if (response === 1) {
         // User wants to delete the folder - show confirmation
@@ -294,10 +305,28 @@ function registerIpcHandlers(): void {
           }
         }
       }
+    } else if (scheduleText) {
+      // No folder to offer for deletion, but the schedules still need an answer
+      const { response, checkboxChecked } = await dialog.showMessageBox({
+        type: 'question',
+        buttons: ['Remove from Cockpit', 'Cancel'],
+        defaultId: 0,
+        cancelId: 1,
+        title: 'Remove Project',
+        message: 'Remove this project from Cockpit?',
+        detail: `Project: ${expandedPath}${scheduleDetail}`,
+        ...scheduleCheckbox,
+      });
+      if (response === 1) return;
+      deleteSchedules = checkboxChecked;
     }
 
     // Always remove from store (unless cancelled above)
     store.removeProject(projectPath);
+    if (deleteSchedules) {
+      const removed = scheduler.deleteSchedulesForProject(projectPath);
+      log.info(`[projects] Removed ${projectPath} and ${removed.length} schedule(s)`);
+    }
   });
 
   ipcMain.handle('select-folder', async () => {
