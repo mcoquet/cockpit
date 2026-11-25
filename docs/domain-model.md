@@ -73,9 +73,14 @@ Diagram names are the glossary terms without spaces.
   dialog; unticked, the schedules are kept unchanged and keep firing. A schedule run
   already going when its schedule is deleted may finish, but leaves no record and starts
   no queued run. A project with no schedules is removed without being asked about them.
+  Cancelling any of the remove dialogs, including the "Delete Permanently" confirmation
+  after choosing "Delete Folder", removes nothing: project, folder and schedules all stay.
 - At most 1,000 schedule runs are kept across all schedules; the oldest are dropped first.
 - When a schedule with queue behaviour **skip** comes due while its previous run is still
   going, the new schedule run is recorded as failed ("Skipped") and does not run.
+- Queued schedule runs wait only in memory. When Cockpit starts, every schedule run still
+  recorded as queued or running from an earlier Cockpit process is marked failed ("Cockpit
+  quit before this ran"); it is never run later.
 - Cockpit does not quit while any terminal session is running unless the user confirms;
   the confirmation counts terminal sessions, not projects. Confirming saves the restore set. An upgrade restart does not ask, but saves the
   restore set first.
@@ -84,13 +89,6 @@ Diagram names are the glossary terms without spaces.
 - The restore set is cleared once it has been reopened.
 - Window → "Open in External Terminal" (Cmd+T) and Cmd+N act on the project of the
   terminal window last used, whichever of a project's windows that is.
-
-### Current behaviour worth knowing
-
-These follow from the code as built; they are gaps, not rules.
-
-- Queued schedule runs wait only in memory. If Cockpit quits first, they stay "queued" in
-  the record and never run.
 
 ## Lifecycles
 
@@ -101,4 +99,5 @@ closed; either one ends the other).
 
 **Schedule run**: Queued → Running → (Success | Failed). Under **skip**, a run that comes
 due during a previous one goes straight to Failed. Under **parallel** it starts Running at
-once.
+once. A schedule run still Queued or Running when Cockpit quits goes to Failed the next
+time Cockpit starts.

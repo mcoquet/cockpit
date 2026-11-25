@@ -17,7 +17,7 @@ import * as scheduler from './scheduler';
 import * as schedulerExecutor from './scheduler-executor';
 import { getEnvVarsForProject } from './session-env';
 import { expandProjectPath, isDeletableProjectFolder } from './project-path';
-import { buildRemoveDialogText } from './project-removal';
+import { askRemoveProject, buildRemoveDialogText } from './project-removal';
 import type { AppSettings } from '../shared/types';
 import type { Project, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
@@ -254,72 +254,26 @@ function registerIpcHandlers(): void {
     const canDeleteFolder =
       fs.existsSync(expandedPath) && isDeletableProjectFolder(expandedPath, app.getPath('home'));
 
-    // The project's schedules are deleted with it unless the user unticks the box (#53)
-    const scheduleText = buildRemoveDialogText(scheduler.listSchedules(projectPath));
-    const scheduleCheckbox = scheduleText
-      ? { checkboxLabel: scheduleText.checkboxLabel, checkboxChecked: true }
-      : {};
-    const scheduleDetail = scheduleText ? `\n\n${scheduleText.detail}` : '';
-    let deleteSchedules = false;
+    // The project's schedules are deleted with it unless the user unticks the box (#53).
+    // Cancel in any dialog, including "Delete Permanently", removes nothing (#73).
+    const plan = await askRemoveProject({
+      expandedPath,
+      canDeleteFolder,
+      scheduleText: buildRemoveDialogText(scheduler.listSchedules(projectPath)),
+      showMessageBox: (options) => dialog.showMessageBox(options),
+    });
+    if (!plan) return;
 
-    if (canDeleteFolder) {
-      // Ask user if they want to delete the folder too
-      const { response, checkboxChecked } = await dialog.showMessageBox({
-        type: 'question',
-        buttons: ['Remove from Cockpit', 'Delete Folder', 'Cancel'],
-        defaultId: 0,
-        cancelId: 2,
-        title: 'Remove Project',
-        message: 'How would you like to remove this project?',
-        detail: `Project: ${expandedPath}${scheduleDetail}`,
-        ...scheduleCheckbox,
-      });
-
-      if (response === 2) {
-        // User cancelled
-        return;
+    if (plan.deleteFolder) {
+      try {
+        fs.rmSync(expandedPath, { recursive: true, force: true });
+      } catch (err) {
+        dialog.showErrorBox('Failed to delete folder', `${err}`);
       }
-      deleteSchedules = scheduleText !== null && checkboxChecked;
-
-      if (response === 1) {
-        // User wants to delete the folder - show confirmation
-        const { response: confirmResponse } = await dialog.showMessageBox({
-          type: 'warning',
-          buttons: ['Cancel', 'Delete Permanently'],
-          defaultId: 0,
-          cancelId: 0,
-          title: 'Delete Folder?',
-          message: 'This action cannot be undone.',
-          detail: `This will permanently delete:\n${expandedPath}\n\nand all its contents.`,
-        });
-
-        if (confirmResponse === 1) {
-          try {
-            fs.rmSync(expandedPath, { recursive: true, force: true });
-          } catch (err) {
-            dialog.showErrorBox('Failed to delete folder', `${err}`);
-          }
-        }
-      }
-    } else if (scheduleText) {
-      // No folder to offer for deletion, but the schedules still need an answer
-      const { response, checkboxChecked } = await dialog.showMessageBox({
-        type: 'question',
-        buttons: ['Remove from Cockpit', 'Cancel'],
-        defaultId: 0,
-        cancelId: 1,
-        title: 'Remove Project',
-        message: 'Remove this project from Cockpit?',
-        detail: `Project: ${expandedPath}${scheduleDetail}`,
-        ...scheduleCheckbox,
-      });
-      if (response === 1) return;
-      deleteSchedules = checkboxChecked;
     }
 
-    // Always remove from store (unless cancelled above)
     store.removeProject(projectPath);
-    if (deleteSchedules) {
+    if (plan.deleteSchedules) {
       const removed = scheduler.deleteSchedulesForProject(projectPath);
       log.info(`[projects] Removed ${projectPath} and ${removed.length} schedule(s)`);
     }
@@ -632,10 +586,6 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('scheduler:history', (_event, id: string, limit?: number) =>
     scheduler.getRunHistory(id, limit)
-  );
-
-  ipcMain.handle('scheduler:queued', (_event, id: string) =>
-    scheduler.getQueuedRuns(id)
   );
 
   ipcMain.handle('scheduler:next-run', (_event, cronExpression: string) =>
