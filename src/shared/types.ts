@@ -83,6 +83,7 @@ export interface CockpitAPI {
   deleteSession: (path: string, sessionId: string) => Promise<boolean>;
   openSessionById: (path: string, sessionId: string) => Promise<void>;
   hasSessionHistory: (path: string) => Promise<boolean>;
+  getProjectCapabilities: (path: string) => Promise<ProjectCapabilities>;
 
   // Scheduler
   listSchedules: (projectPath?: string) => Promise<Schedule[]>;
@@ -143,6 +144,47 @@ export interface ScheduleRun {
   status: 'queued' | 'running' | 'success' | 'failed';
   error?: string;
   output?: string;
+}
+
+/** Where Claude Code picked up an MCP server, skill, agent, command or plugin setting. */
+export type CapabilitySource = 'project' | 'local' | 'user' | 'plugin' | 'managed';
+
+export interface McpServerInfo {
+  name: string;
+  source: CapabilitySource;
+  /** Plugin name, when source is 'plugin'. */
+  plugin?: string;
+  transport: 'stdio' | 'http' | 'sse' | 'ws';
+  /** 'needs-approval': a project .mcp.json server no settings file has approved yet. */
+  state: 'enabled' | 'disabled' | 'needs-approval';
+}
+
+/** A skill, subagent or slash command. */
+export interface CapabilityItem {
+  name: string;
+  description?: string;
+  source: CapabilitySource;
+  plugin?: string;
+}
+
+export interface PluginInfo {
+  /** "name@marketplace", as in enabledPlugins. */
+  id: string;
+  name: string;
+  /** The settings level that enabled it. */
+  source: CapabilitySource;
+  installed: boolean;
+}
+
+/** What Claude Code would load when launched in a project, read from its config files. */
+export interface ProjectCapabilities {
+  mcpServers: McpServerInfo[];
+  skills: CapabilityItem[];
+  agents: CapabilityItem[];
+  commands: CapabilityItem[];
+  plugins: PluginInfo[];
+  /** Files that exist but could not be read or parsed. */
+  problems: string[];
 }
 
 export interface ParsedSchedule {
