@@ -16,6 +16,16 @@ export function expandProjectPath(projectPath: string, home: string = os.homedir
 }
 
 /**
+ * Name of the folder Claude Code keeps a project's conversations in, under
+ * ~/.claude/projects: the absolute project folder with `/` and `.` turned into `-`.
+ * Example: Projects/cockpit (home /Users/miguel) -> -Users-miguel-Projects-cockpit
+ */
+export function encodeProjectPath(projectPath: string, home: string = os.homedir()): string {
+  const fullPath = expandProjectPath(projectPath, home);
+  return '-' + fullPath.slice(1).replace(/[\/\.]/g, '-');
+}
+
+/**
  * False for folders that must never be deleted as a project folder: the root,
  * home itself, or any folder that contains home.
  */

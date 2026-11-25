@@ -1,12 +1,12 @@
 import { BrowserWindow, dialog, shell } from 'electron';
 import log from 'electron-log';
 import path from 'path';
-import os from 'os';
 import { pathToFileURL } from 'url';
 import { execFile } from 'child_process';
 import * as settings from './settings';
 import { countLiveWindows } from './window-count';
 import { classifyNavigation } from './navigation-guard';
+import { expandProjectPath } from './project-path';
 import { terminalAppScript, iTermScript } from './external-terminal-script';
 import type { PermissionMode } from '../shared/types';
 
@@ -258,12 +258,7 @@ export function openExternalTerminal(sessionId: string): void {
   const projectPath = terminalProjectPaths.get(sessionId);
   if (!projectPath) return;
 
-  // Expand ~ to home directory
-  const fullPath = projectPath.startsWith('~')
-    ? path.join(os.homedir(), projectPath.slice(1))
-    : projectPath.startsWith('/')
-      ? projectPath
-      : path.join(os.homedir(), projectPath);
+  const fullPath = expandProjectPath(projectPath);
 
   const appSettings = settings.getSettings();
   const terminal = appSettings.externalTerminal || 'terminal';

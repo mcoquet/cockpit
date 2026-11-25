@@ -1,11 +1,11 @@
 import { spawn } from 'child_process';
-import path from 'path';
 import os from 'os';
 import type { Schedule } from '../shared/types';
 import { findClaudeBinary } from './claude';
 import { getClaudeSpawnEnv } from './env';
 import { getEnvVarsForProject } from './session-env';
 import { getProjects } from './store';
+import { expandProjectPath } from './project-path';
 import { headlessScheduleArgs, resolvePermissionMode } from './permission-mode';
 
 export interface ParsedSchedule {
@@ -30,16 +30,7 @@ export function setOutputCallback(fn: (runId: string, chunk: string) => void): v
 }
 
 export async function executeSchedule(schedule: Schedule, runId: string): Promise<string> {
-  // Expand path: handle ~, relative paths, and absolute paths
-  let expandedPath: string;
-  if (schedule.projectPath.startsWith('~')) {
-    expandedPath = path.join(os.homedir(), schedule.projectPath.slice(1));
-  } else if (path.isAbsolute(schedule.projectPath)) {
-    expandedPath = schedule.projectPath;
-  } else {
-    // Relative path - prepend home directory
-    expandedPath = path.join(os.homedir(), schedule.projectPath);
-  }
+  const expandedPath = expandProjectPath(schedule.projectPath);
 
   if (schedule.mode === 'interactive') {
     if (!openSessionFn) {
