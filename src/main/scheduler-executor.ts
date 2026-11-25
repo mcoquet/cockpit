@@ -5,6 +5,8 @@ import type { Schedule } from '../shared/types';
 import { findClaudeBinary } from './claude';
 import { getClaudeSpawnEnv } from './env';
 import { getEnvVarsForProject } from './session-env';
+import { getProjects } from './store';
+import { headlessScheduleArgs, resolvePermissionMode } from './permission-mode';
 
 export interface ParsedSchedule {
   cron: string;
@@ -55,9 +57,12 @@ export async function executeSchedule(schedule: Schedule, runId: string): Promis
 
     let output = '';
     const env = await getClaudeSpawnEnv(claudePath, expandedPath, getEnvVarsForProject(schedule.projectPath));
+    // Same project lookup as getEnvVarsForProject: the project's default mode (#56).
+    const projectMode = getProjects().find((p) => p.path === schedule.projectPath)?.permissionMode;
+    const args = headlessScheduleArgs(schedule.prompt, resolvePermissionMode(undefined, projectMode));
 
     return new Promise((resolve, reject) => {
-      const child = spawn(claudePath, ['-p', schedule.prompt], {
+      const child = spawn(claudePath, args, {
         cwd: expandedPath,
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: true,

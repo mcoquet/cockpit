@@ -33,12 +33,18 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   natural-language request into a schedule with Claude Code.
 - `claude-stats.ts`: usage stats from `~/.claude/stats-cache.json`.
 - `permissions.ts`: macOS privacy access prompts through `osascript`.
+- `project-path.ts`: turns a stored project path (home-relative, `~/…` or absolute) into
+  an absolute folder, and refuses home, its ancestors and the root as folders to delete.
+  Kept free of Electron so it can be unit-tested.
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.
 - `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.
   The folder path is single-quoted for the shell (`shellSingleQuote`, now in
   `src/shared/shell-quote.ts` and re-exported here), then escaped as an AppleScript string,
   so nothing in a folder name runs as a command. Electron-free and unit-tested.
+- `permission-mode.ts`: pure helpers for the permission mode a terminal session or
+  headless schedule run starts in (explicit choice, else the project's default, else
+  Claude Code's default) and the matching CLI flags for headless runs.
 
 ### `src/preload.ts`
 
@@ -97,14 +103,20 @@ Enter).
   `pty-resize` look up the sender window in `windowToSession`.
 - **A terminal window and its PTY end together.** Closing the window kills the PTY; the PTY
   exiting closes the window ([ADR 0001](docs/adr/0001-embedded-terminal-spawns-claude-directly.md)).
+- **Every terminal session's permission mode comes from `resolvePermissionMode`.**
+  `openSessionForProject` resolves it when no mode is passed, so callers pass a mode only
+  for an explicit Option+click choice; `openSessionForProjectWithId` and headless schedule
+  runs (`scheduler-executor.ts`) use it too.
 - **Every `claude` process gets its environment from `getClaudeSpawnEnv`.** Terminal
   sessions, headless schedule runs, summaries and schedule interpretation all go through
   it, so they all see the user's shell environment plus Cockpit's environment variables.
 - **Project paths are stored relative to home**
   ([ADR 0002](docs/adr/0002-project-identity-is-home-relative-path.md)), or absolute for
-  folders outside it, and expanded at the point of use. The expansion is currently written out in several places (`pty.ts`,
-  `store.ts`, `sessions.ts`, `scheduler-executor.ts`, `terminal-window.ts`, `index.ts`) with slightly
-  different rules.
+  folders outside it, and expanded at the point of use. `project-path.ts`
+  (`expandProjectPath`) is the shared expansion; so far only the remove-project handler in
+  `index.ts` uses it. The expansion is still written out separately, with slightly different
+  rules, in `pty.ts`, `store.ts`, `sessions.ts`, `scheduler-executor.ts`,
+  `terminal-window.ts` and elsewhere in `index.ts` (moving those over is #59).
 - **A folder path never reaches a shell unquoted.** Cmd+T hands the path to Warp, Kitty
   and custom apps as an `open -a` argument, and to Terminal and iTerm only through
   `external-terminal-script.ts`.

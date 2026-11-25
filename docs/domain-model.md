@@ -35,9 +35,7 @@ Diagram names are the glossary terms without spaces.
   one (continue), or a chosen one from the conversation history (resume).
 - A **Conversation** is described by at most one **Summary**.
 - A **Terminal session** starts in exactly one **Permission mode**; a **Project** defaults to
-  at most one (no default means Claude Code's own default). Only terminal sessions opened by
-  clicking a project or resuming from its conversation history use the project's default;
-  the others start in Claude Code's default (see below).
+  at most one (no default means Claude Code's own default).
 - A **Project** sets zero or more **Project environment variables**.
 - A **Project** has zero or more **Schedules**.
 - A **Schedule** records zero or more **Schedule runs**, which don't exist without it.
@@ -61,6 +59,12 @@ Diagram names are the glossary terms without spaces.
 - If a terminal session that was told to continue the most recent conversation exits with
   an error (code 1) within three seconds, Cockpit replaces it with one that starts a new
   conversation.
+- A terminal session starts in the permission mode chosen for that launch (Option+click on
+  a project), otherwise in its project's default permission mode, otherwise in Claude
+  Code's default. This holds however it is opened: project click, conversation history,
+  Cmd+N, reopening the restore set, creating a project, an interactive schedule run, or
+  the replacement after a failed continue (which keeps the mode of the one it replaces).
+  A headless schedule run starts in its project's default permission mode.
 - A conversation's summary is written once and never regenerated; deleting a conversation
   deletes its summary.
 - A schedule fires only while it is enabled and Cockpit is running.
@@ -80,10 +84,6 @@ These follow from the code as built; they are gaps, not rules.
 - Removing a project does not remove its schedules: they stay enabled and keep firing.
 - **Catch-up** is stored on a schedule but nothing acts on it; missed occurrences are never
   run.
-- Terminal sessions opened by Cmd+N, by reopening the restore set, by creating a project,
-  by an interactive schedule run, or as the replacement after a failed continue, start in
-  Claude Code's default permission mode, not the project's. Headless schedule runs pass no
-  permission mode.
 - Queued schedule runs wait only in memory. If Cockpit quits first, they stay "queued" in
   the record and never run.
 

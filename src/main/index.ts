@@ -8,12 +8,14 @@ import * as pty from './pty';
 import * as terminalWindow from './terminal-window';
 import { shouldShowDock } from './window-count';
 import { requestPermission } from './permissions';
+import { resolvePermissionMode } from './permission-mode';
 import * as settings from './settings';
 import { getClaudeStats } from './claude-stats';
 import * as sessions from './sessions';
 import * as scheduler from './scheduler';
 import * as schedulerExecutor from './scheduler-executor';
 import { getEnvVarsForProject } from './session-env';
+import { expandProjectPath, isDeletableProjectFolder } from './project-path';
 import type { AppSettings } from '../shared/types';
 import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
@@ -249,15 +251,13 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('remove-project', async (_event, projectPath: string) => {
-    // Expand ~ to home directory for display and deletion
-    const expandedPath = projectPath.startsWith('~')
-      ? path.join(app.getPath('home'), projectPath.slice(1))
-      : projectPath;
+    const expandedPath = expandProjectPath(projectPath, app.getPath('home'));
 
-    // Check if folder exists
-    const folderExists = fs.existsSync(expandedPath);
+    // Offer to delete the folder only if it exists and is not home or above it
+    const canDeleteFolder =
+      fs.existsSync(expandedPath) && isDeletableProjectFolder(expandedPath, app.getPath('home'));
 
-    if (folderExists) {
+    if (canDeleteFolder) {
       // Ask user if they want to delete the folder too
       const { response } = await dialog.showMessageBox({
         type: 'question',
@@ -266,7 +266,7 @@ function registerIpcHandlers(): void {
         cancelId: 2,
         title: 'Remove Project',
         message: 'How would you like to remove this project?',
-        detail: `Project: ${projectPath}`,
+        detail: `Project: ${expandedPath}`,
       });
 
       if (response === 2) {
@@ -383,7 +383,7 @@ function registerIpcHandlers(): void {
     if (altKey) {
       // Show native context menu for permission mode selection
       const project = store.getProjects().find(p => p.path === projectPath);
-      const currentMode = permissionMode || project?.permissionMode || 'default';
+      const currentMode = resolvePermissionMode(permissionMode, project?.permissionMode);
 
       const modes: { label: string; value: PermissionMode }[] = [
         { label: 'Default', value: 'default' },
@@ -408,8 +408,7 @@ function registerIpcHandlers(): void {
       return;
     }
 
-    const resolvedMode = permissionMode || store.getProjects().find(p => p.path === projectPath)?.permissionMode || 'default';
-    await openSessionForProject(projectPath, forceNew ?? false, resolvedMode);
+    await openSessionForProject(projectPath, forceNew ?? false, permissionMode);
   });
 
   ipcMain.handle('get-claude-stats', () => getClaudeStats());
@@ -692,7 +691,9 @@ async function restorePreviousSession(): Promise<void> {
 
 const openingProjects = new Set<string>();
 
-async function openSessionForProject(projectPath: string, forceNew: boolean, permissionMode: PermissionMode = 'default'): Promise<void> {
+// With no explicitMode, the terminal session starts in the project's default
+// permission mode (#56). Every open path goes through here.
+async function openSessionForProject(projectPath: string, forceNew: boolean, explicitMode?: PermissionMode): Promise<void> {
   const existing = activeSessions[projectPath];
   log.info('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
 
@@ -720,6 +721,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, per
   const projects = store.getProjects();
   const project = projects.find((p) => p.path === projectPath);
   const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
+  const permissionMode = resolvePermissionMode(explicitMode, project?.permissionMode);
 
   // Spawning waits on the shell env capture; ignore repeat clicks meanwhile.
   if (!forceNew && openingProjects.has(projectPath)) {
@@ -805,7 +807,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, per
         delete activeSessions[projectPath];
       }
       notifySessionsChanged();
-      openSessionForProject(projectPath, true); // force new session
+      openSessionForProject(projectPath, true, explicitMode); // force new session, same mode
       return;
     }
 
@@ -832,7 +834,7 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
   const projects = store.getProjects();
   const project = projects.find((p) => p.path === projectPath);
   const projectName = project?.name || projectPath.split('/').pop() || 'Terminal';
-  const permissionMode = project?.permissionMode || 'default';
+  const permissionMode = resolvePermissionMode(undefined, project?.permissionMode);
 
   log.info('[open-session-by-id] resuming session:', sessionId, 'in project:', projectPath);
   const { id: newSessionId } = await pty.spawnClaude(projectPath, claudePath, {
