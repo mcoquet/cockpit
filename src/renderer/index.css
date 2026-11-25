@@ -308,20 +308,38 @@ body.dev .app {
   align-items: center;
 }
 
+/* Long locations truncate in the middle: the head shrinks with an ellipsis,
+   the last folder stays whole. The full path is in the title tooltip (#18). */
 .location-path {
   flex: 1;
+  min-width: 0;
+  display: flex;
   padding: 10px 12px;
   background: #1a2a1e;
   border: 1px solid #3a4a3e;
   border-radius: 6px;
   font-size: 12px;
-  color: #888;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #e0e0e0;
   white-space: nowrap;
 }
 
+.location-head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #b0b0b0;
+}
+
+.location-tail {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
 .location-picker button {
+  flex-shrink: 0;
   padding: 10px 16px;
   border: none;
   border-radius: 6px;
@@ -344,6 +362,12 @@ body.dev .app {
   min-height: 32px;
   display: flex;
   align-items: center;
+}
+
+/* Wrap long paths inside the box instead of running past it (#18) */
+.create-preview span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .create-actions {

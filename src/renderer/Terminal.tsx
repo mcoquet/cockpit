@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import type { PermissionMode } from '../shared/types';
+import { mapTerminalKey } from '../shared/terminal-keys';
 
 // Apply dev mode class if running in development
 if (new URLSearchParams(window.location.search).has('dev')) {
@@ -116,6 +117,15 @@ export default function Terminal() {
     // Send input to PTY
     terminal.onData((data) => {
       window.terminal.sendInput(data);
+    });
+
+    // Shift+Enter inserts a newline: send what Option+Enter sends (#16)
+    terminal.attachCustomKeyEventHandler((ev) => {
+      const { handled, send } = mapTerminalKey(ev);
+      if (!handled) return true;
+      ev.preventDefault();
+      if (send) window.terminal.sendInput(send);
+      return false;
     });
 
     // Receive output from PTY
