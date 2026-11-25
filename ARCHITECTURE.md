@@ -35,6 +35,9 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `permissions.ts`: macOS privacy access prompts through `osascript`.
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.
+- `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.
+  The folder path is single-quoted for the shell, then escaped as an AppleScript string,
+  so nothing in a folder name runs as a command. Electron-free and unit-tested.
 
 ### `src/preload.ts`
 
@@ -93,6 +96,9 @@ middle and keeps the last folder visible).
   folders outside it, and expanded at the point of use. The expansion is currently written out in several places (`pty.ts`,
   `store.ts`, `sessions.ts`, `scheduler-executor.ts`, `terminal-window.ts`, `index.ts`) with slightly
   different rules.
+- **A folder path never reaches a shell unquoted.** Cmd+T hands the path to Warp, Kitty
+  and custom apps as an `open -a` argument, and to Terminal and iTerm only through
+  `external-terminal-script.ts`.
 - **Only the main process writes Cockpit's data.** Cockpit never writes Claude Code's data
   except to delete a conversation file the user asked to delete.
 
