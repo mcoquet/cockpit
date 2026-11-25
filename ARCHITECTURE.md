@@ -28,7 +28,12 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   path>/*.jsonl`, deletes conversations, and generates and caches summaries.
 - `store.ts`: `projects.json` (projects, schedules, schedule runs, restore set).
 - `settings.ts`: `settings.json`, the user's global shortcut and launch at login.
-- `scheduler.ts`: schedule CRUD, node-cron jobs, queue behaviour, schedule-run records.
+- `scheduler.ts`: schedule CRUD, node-cron jobs, queue behaviour, schedule-run records,
+  and deleting a removed project's schedules (`deleteSchedulesForProject`).
+- `job-registry.ts`: the scheduler's active node-cron jobs keyed by schedule ID
+  (register, unregister, clear). Electron-free and unit-tested with real node-cron.
+- `project-removal.ts`: which schedules and schedule runs go with a removed project, and
+  the remove dialog's checkbox label and schedule list. Electron-free and unit-tested.
 - `scheduler-executor.ts`: runs a schedule run (interactive or headless) and turns a
   natural-language request into a schedule with Claude Code.
 - `claude-stats.ts`: usage stats from `~/.claude/stats-cache.json`.
