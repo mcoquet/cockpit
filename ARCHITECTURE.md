@@ -56,7 +56,8 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `claude-stats.ts`: usage stats from `~/.claude/stats-cache.json`.
 - `permissions.ts`: macOS privacy access prompts through `osascript`.
 - `project-path.ts`: turns a stored project path (home-relative, `~/…` or absolute) into
-  an absolute folder, and refuses home, its ancestors and the root as folders to delete.
+  an absolute folder (`expandProjectPath`) and into Claude Code's conversation folder name
+  (`encodeProjectPath`), and refuses home, its ancestors and the root as folders to delete.
   Kept free of Electron so it can be unit-tested.
 - `project-capabilities.ts`: a project's capabilities (#14, #12). Reads Claude Code's
   configuration (MCP servers and their state, skills, agents, commands, enabled plugins)
@@ -166,11 +167,13 @@ Enter) and `next-run-label.ts` (the schedule editor's "Today 18:30" / "Mon 09:00
   it, so they all see the user's shell environment plus Cockpit's environment variables.
 - **Project paths are stored relative to home**
   ([ADR 0002](docs/adr/0002-project-identity-is-home-relative-path.md)), or absolute for
-  folders outside it, and expanded at the point of use. `project-path.ts`
-  (`expandProjectPath`) is the shared expansion; so far only the remove-project handler in
-  `index.ts` uses it. The expansion is still written out separately, with slightly different
-  rules, in `pty.ts`, `store.ts`, `sessions.ts`, `scheduler-executor.ts`,
-  `terminal-window.ts` and elsewhere in `index.ts` (moving those over is #59).
+  folders outside it, and expanded at the point of use. **Every expansion goes through
+  `expandProjectPath`** (`project-path.ts`): the PTY's working folder (`pty.ts`), the git and
+  GitHub checks (`store.ts`), Claude Code's conversation folder name (`encodeProjectPath`,
+  used by `sessions.ts`), summaries, schedule runs, Cmd+T and the remove-project handler
+  (#59). Only user-typed `~/…` file paths (the open-path handler and the terminal context
+  menu) and the new-project location are expanded separately in `index.ts`; they are not
+  project paths.
 - **A folder path never reaches a shell unquoted.** Cmd+T hands the path to Warp, Kitty
   and custom apps as an `open -a` argument, and to Terminal and iTerm only through
   `external-terminal-script.ts`.

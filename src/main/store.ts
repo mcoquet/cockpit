@@ -4,6 +4,7 @@ import fs from 'fs';
 import type { Project, Schedule, ScheduleRun } from '../shared/types';
 import { partitionProjectSchedules } from './project-removal';
 import { failInterruptedRuns } from './interrupted-runs';
+import { expandProjectPath } from './project-path';
 
 // Use require for electron-store due to ESM/CJS compatibility
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -33,12 +34,12 @@ const store = new Store({
 };
 
 function checkHasGit(projectPath: string): boolean {
-  const fullPath = path.join(os.homedir(), projectPath, '.git');
+  const fullPath = path.join(expandProjectPath(projectPath), '.git');
   return fs.existsSync(fullPath);
 }
 
 function getGithubUrl(projectPath: string): string | undefined {
-  const configPath = path.join(os.homedir(), projectPath, '.git', 'config');
+  const configPath = path.join(expandProjectPath(projectPath), '.git', 'config');
   if (!fs.existsSync(configPath)) return undefined;
   try {
     const config = fs.readFileSync(configPath, 'utf-8');

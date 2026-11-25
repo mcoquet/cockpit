@@ -1,9 +1,8 @@
-import os from 'os';
-import path from 'path';
 import type { IPty } from 'node-pty';
 import log from 'electron-log';
 import { getClaudeSpawnEnv } from './env';
 import { terminalSessionArgs } from './permission-mode';
+import { expandProjectPath } from './project-path';
 import type { PermissionMode, EnvVars } from '../shared/types';
 
 // node-pty is a native module that needs require()
@@ -40,7 +39,7 @@ export async function spawnClaude(
   options?: { continueSession?: boolean; resumeSessionId?: string; permissionMode?: PermissionMode; envVars?: EnvVars }
 ): Promise<{ id: string; process: IPty }> {
   const id = generateSessionId();
-  const fullPath = path.join(os.homedir(), projectPath);
+  const fullPath = expandProjectPath(projectPath);
 
   const args = terminalSessionArgs(options ?? {});
 
