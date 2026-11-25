@@ -20,7 +20,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # 22, not 20: `npm test` passes a glob to `node --test`, which Node 20 can't expand.
+          node-version: '22'
           cache: 'npm'
 
       - name: Sync version from tag
@@ -32,6 +33,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # A failing test stops this job, so no DMG is built and nothing is released.
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -128,9 +133,13 @@ jobs:
 
             app "Cockpit.app"
 
-            # Remove quarantine attribute since app is unsigned
+            # Remove quarantine attribute since app is unsigned (ADR 0004).
+            # must_succeed: false: xattr exits 1 when the attribute is absent
+            # (e.g. brew install --no-quarantine), which would otherwise abort the install.
             postflight_steps do
-              run "/usr/bin/xattr", args: ["-d", "com.apple.quarantine", "{{appdir}}/Cockpit.app"]
+              run "/usr/bin/xattr",
+                  args:         ["-d", "-r", "com.apple.quarantine", "{{appdir}}/Cockpit.app"],
+                  must_succeed: false
             end
 
             zap trash: [

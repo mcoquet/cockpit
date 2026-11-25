@@ -73,7 +73,8 @@ middle and keeps the last folder visible).
   output in `dist/main/` (`npm test` builds first).
 - `.githooks/pre-push`: when a `v*` tag is pushed, makes `package.json` match the tag;
   see Releases in `CLAUDE.md`.
-- `.github/workflows/release.yml`: on a `v*` tag, builds unsigned arm64 and x64 DMGs,
+- `.github/workflows/release.yml`: on a `v*` tag, runs `npm test` (a failure stops the
+  release), builds unsigned arm64 and x64 DMGs,
   publishes a GitHub release and rewrites the Homebrew cask
   ([ADR 0004](docs/adr/0004-unsigned-homebrew-distribution.md)).
 - `docs/plans/`, `docs/superpowers/`: past design docs and plans. History, not a
