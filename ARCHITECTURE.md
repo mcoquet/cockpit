@@ -33,6 +33,10 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   and deleting a removed project's schedules (`deleteSchedulesForProject`).
 - `job-registry.ts`: the scheduler's active node-cron jobs keyed by schedule ID
   (register, unregister, clear). Electron-free and unit-tested with real node-cron.
+- `next-run.ts`: when a cron expression next comes due (`nextRunAt`), with cron-parser
+  after node-cron's own validation; node-cron can't be asked for the next run of an
+  unstarted task or from a given time. Backs `scheduler.getNextRunTime` and the
+  `scheduler:next-run` IPC. Electron-free and unit-tested.
 - `project-removal.ts`: which schedules and schedule runs go with a removed project, and
   the remove dialog's checkbox label and schedule list. Electron-free and unit-tested.
 - `scheduler-executor.ts`: runs a schedule run (interactive or headless) and turns a
@@ -91,9 +95,10 @@ variable helpers used by both sides). Pure renderer helpers live here too, so th
 sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline),
 `path-display.ts` (splits a location so the popup's Create tab truncates it in the
 middle and keeps the last folder visible), `shell-quote.ts` (`shellSingleQuote`, also
-used by the main process for Cmd+T) and `dropped-paths.ts` (the text a file drop types
+used by the main process for Cmd+T), `dropped-paths.ts` (the text a file drop types
 into a terminal window: each path single-quoted, space-separated, one trailing space, no
-Enter).
+Enter) and `next-run-label.ts` (the schedule editor's "Today 18:30" / "Mon 09:00" /
+"Wed 2 Dec 09:05" label for a next run).
 
 ### Elsewhere
 

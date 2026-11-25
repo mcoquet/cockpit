@@ -638,6 +638,10 @@ function registerIpcHandlers(): void {
     scheduler.getQueuedRuns(id)
   );
 
+  ipcMain.handle('scheduler:next-run', (_event, cronExpression: string) =>
+    scheduler.getNextRunTime(cronExpression)
+  );
+
   ipcMain.handle('scheduler:interpret', (_event, input: string) =>
     schedulerExecutor.interpretSchedule(input)
   );

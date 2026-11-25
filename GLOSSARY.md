@@ -114,10 +114,16 @@ What a schedule does when it comes due while its previous run is still going: **
 the new run, **queue** it until the previous one ends, or run both in **parallel**.
 _Avoid_: concurrency, overlap policy
 
-**Catch-up**:
-A schedule setting meant to run occurrences that were missed while Cockpit was not
-running.
-_Avoid_: backfill, missed runs
+**Next run**:
+When a schedule's cron expression next comes due, in local time, shown in the schedule
+editor ("Next run: Mon 09:00"). A paused schedule shows "Paused" instead. Occurrences
+that came due while Cockpit was not running are skipped, so the next run is always in the
+future.
+_Avoid_: next occurrence, ETA
+
+_Retired_: **Catch-up**, a schedule setting meant to run occurrences missed while Cockpit
+was closed. It never worked and was removed (#54); old stored schedules may still carry
+`catchUp`, which is ignored.
 
 ## Status
 

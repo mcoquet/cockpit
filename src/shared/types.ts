@@ -94,6 +94,8 @@ export interface CockpitAPI {
   resumeSchedule: (id: string) => Promise<void>;
   triggerSchedule: (id: string) => Promise<ScheduleRun | null>;
   getScheduleHistory: (id: string, limit?: number) => Promise<ScheduleRun[]>;
+  /** When this cron expression next fires (epoch ms, local time); null if invalid. */
+  getNextScheduleRun: (cronExpression: string) => Promise<number | null>;
   interpretSchedule: (input: string) => Promise<ParsedSchedule>;
   onScheduleRunOutput: (callback: (data: { runId: string; chunk: string }) => void) => void;
   onScheduleRunStarted: (callback: (run: ScheduleRun) => void) => void;
@@ -129,7 +131,7 @@ export interface Schedule {
   enabled: boolean;
   mode: 'interactive' | 'headless';
   prompt: string;
-  catchUp: boolean;
+  // Schedules stored before #54 may still carry a `catchUp` flag; it is ignored.
   queueBehavior: 'skip' | 'queue' | 'parallel';
   createdAt: number;
   updatedAt: number;
@@ -151,7 +153,6 @@ export interface ParsedSchedule {
   prompt: string;
   mode: 'interactive' | 'headless';
   queueBehavior: 'skip' | 'queue' | 'parallel';
-  catchUp: boolean;
   name: string;
 }
 
