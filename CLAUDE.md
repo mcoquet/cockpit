@@ -68,6 +68,14 @@ brew update && brew info cockpit | head -1
 3. **No premature commits** - Make changes, then wait for user to validate
 4. **User confirms before done** - Always ask user to test before committing/pushing
 
+### Exception: coordinated worker sessions
+
+Rules 3 and 4 apply to interactive sessions with Miguel. A **worker** session started by the coordinator (the `workload-orchestrator` skill, tracked on #50) works differently, by Miguel's decision of 2026-11-25:
+
+- It commits and pushes to its own feature branch and opens a PR with `Fixes #N`, without waiting for Miguel to test.
+- Its evidence is its tests plus a published results page; the coordinator session reviews that and merges. Miguel's manual checks on his Mac are listed on the results page and done afterwards.
+- It never merges its own PR, never pushes to `main`, and never pushes a `v*` tag.
+
 ### User Intent: "Feature" or "Bug" = Create Ticket
 
 When the user says things like:
