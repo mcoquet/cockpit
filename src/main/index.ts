@@ -15,6 +15,7 @@ import * as sessions from './sessions';
 import * as scheduler from './scheduler';
 import * as schedulerExecutor from './scheduler-executor';
 import { getEnvVarsForProject } from './session-env';
+import { expandProjectPath, isDeletableProjectFolder } from './project-path';
 import type { AppSettings } from '../shared/types';
 import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
@@ -250,15 +251,13 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('remove-project', async (_event, projectPath: string) => {
-    // Expand ~ to home directory for display and deletion
-    const expandedPath = projectPath.startsWith('~')
-      ? path.join(app.getPath('home'), projectPath.slice(1))
-      : projectPath;
+    const expandedPath = expandProjectPath(projectPath, app.getPath('home'));
 
-    // Check if folder exists
-    const folderExists = fs.existsSync(expandedPath);
+    // Offer to delete the folder only if it exists and is not home or above it
+    const canDeleteFolder =
+      fs.existsSync(expandedPath) && isDeletableProjectFolder(expandedPath, app.getPath('home'));
 
-    if (folderExists) {
+    if (canDeleteFolder) {
       // Ask user if they want to delete the folder too
       const { response } = await dialog.showMessageBox({
         type: 'question',
@@ -267,7 +266,7 @@ function registerIpcHandlers(): void {
         cancelId: 2,
         title: 'Remove Project',
         message: 'How would you like to remove this project?',
-        detail: `Project: ${projectPath}`,
+        detail: `Project: ${expandedPath}`,
       });
 
       if (response === 2) {
