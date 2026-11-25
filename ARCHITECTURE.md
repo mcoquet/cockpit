@@ -57,7 +57,8 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `permissions.ts`: macOS privacy access prompts through `osascript`.
 - `project-path.ts`: turns a stored project path (home-relative, `~/…` or absolute) into
   an absolute folder (`expandProjectPath`) and into Claude Code's conversation folder name
-  (`encodeProjectPath`), and refuses home, its ancestors and the root as folders to delete.
+  (`encodeProjectPath`), turns a chosen folder into the path to store (`toStoredProjectPath`:
+  home-relative only when it is inside home), and refuses home, its ancestors and the root as folders to delete.
   Kept free of Electron so it can be unit-tested.
 - `project-capabilities.ts`: a project's capabilities (#14, #12). Reads Claude Code's
   configuration (MCP servers and their state, skills, agents, commands, enabled plugins)

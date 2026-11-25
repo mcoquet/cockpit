@@ -16,6 +16,18 @@ export function expandProjectPath(projectPath: string, home: string = os.homedir
 }
 
 /**
+ * Turns an absolute folder into the path Cockpit stores for it (ADR 0002): relative
+ * to home when the folder is inside home, absolute otherwise. Home itself is stored
+ * as ''. A folder that only shares home's prefix (/Users/miguel2 for home
+ * /Users/miguel) is outside home (#83).
+ */
+export function toStoredProjectPath(absolutePath: string, home: string = os.homedir()): string {
+  if (absolutePath === home) return '';
+  if (absolutePath.startsWith(home + path.sep)) return absolutePath.slice(home.length + 1);
+  return absolutePath;
+}
+
+/**
  * Name of the folder Claude Code keeps a project's conversations in, under
  * ~/.claude/projects: the absolute project folder with `/` and `.` turned into `-`.
  * Example: Projects/cockpit (home /Users/miguel) -> -Users-miguel-Projects-cockpit

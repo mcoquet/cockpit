@@ -60,3 +60,33 @@ test('home, its ancestors and the root are never deletable project folders', () 
     assert.equal(isDeletableProjectFolder(p, HOME), true, p);
   }
 });
+
+// #83: addProject stores a folder under home as home-relative, anything else
+// as absolute. A sibling folder that only starts with the same letters as home
+// (/Users/miguel2) is outside home.
+const { toStoredProjectPath } = require('../dist/main/main/project-path.js');
+
+test('folder under home is stored home-relative', () => {
+  assert.equal(toStoredProjectPath('/Users/miguel/Projects/foo', HOME), 'Projects/foo');
+  assert.equal(toStoredProjectPath('/Users/miguel/foo', HOME), 'foo');
+});
+
+test('folder outside home is stored absolute', () => {
+  assert.equal(toStoredProjectPath('/opt/work/foo', HOME), '/opt/work/foo');
+});
+
+test('a sibling of home with the same prefix is outside home (#83)', () => {
+  assert.equal(toStoredProjectPath('/Users/miguel2/x', HOME), '/Users/miguel2/x');
+  assert.equal(toStoredProjectPath('/Users/miguel.old/x', HOME), '/Users/miguel.old/x');
+});
+
+test('home itself is stored as before (empty string, expands back to home)', () => {
+  assert.equal(toStoredProjectPath('/Users/miguel', HOME), '');
+  assert.equal(expandProjectPath(toStoredProjectPath('/Users/miguel', HOME), HOME), HOME);
+});
+
+test('stored path round-trips through expandProjectPath', () => {
+  for (const abs of ['/Users/miguel/Projects/foo', '/opt/work/foo', '/Users/miguel2/x']) {
+    assert.equal(expandProjectPath(toStoredProjectPath(abs, HOME), HOME), abs);
+  }
+});
