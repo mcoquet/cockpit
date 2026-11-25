@@ -1,9 +1,12 @@
 import { BrowserWindow, dialog, shell } from 'electron';
+import log from 'electron-log';
 import path from 'path';
 import os from 'os';
+import { pathToFileURL } from 'url';
 import { execFile } from 'child_process';
 import * as settings from './settings';
 import { countLiveWindows } from './window-count';
+import { classifyNavigation } from './navigation-guard';
 import { terminalAppScript, iTermScript } from './external-terminal-script';
 import type { PermissionMode } from '../shared/types';
 
@@ -48,6 +51,12 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
     },
   });
 
+  // The only page this window may show (#69); query strings are ignored.
+  const terminalPagePath = path.join(__dirname, '../../renderer/terminal.html');
+  const ownPage = process.env.NODE_ENV === 'development'
+    ? 'http://localhost:5173/terminal.html'
+    : pathToFileURL(terminalPagePath).href;
+
   // Pass sessionId and title to renderer via query param
   if (process.env.NODE_ENV === 'development') {
     const params = new URLSearchParams({
@@ -57,9 +66,9 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
       ...(permissionMode ? { permissionMode } : {}),
       dev: '1',
     });
-    win.loadURL(`http://localhost:5173/terminal.html?${params.toString()}`);
+    win.loadURL(`${ownPage}?${params.toString()}`);
   } else {
-    win.loadFile(path.join(__dirname, '../../renderer/terminal.html'), {
+    win.loadFile(terminalPagePath, {
       query: {
         sessionId,
         title,
@@ -69,21 +78,28 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
     });
   }
 
-  // Open links in system browser instead of Electron window
+  // Never open a second Electron window: web links go to the system browser,
+  // anything else is dropped (#69).
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (classifyNavigation(url, ownPage) === 'open-external') {
       shell.openExternal(url);
+    } else {
+      log.warn(`[terminal] Dropped window.open to ${url.slice(0, 200)}`);
     }
     return { action: 'deny' };
   });
 
-  // Intercept in-page navigation to external URLs
+  // A terminal window only ever shows its own page (#69). Web links open in
+  // the system browser; other file:// pages, other localhost pages and odd
+  // schemes are dropped.
   win.webContents.on('will-navigate', (event, url) => {
-    // Allow loading the app itself
-    if (url.startsWith('http://localhost:') || url.startsWith('file://')) return;
+    const decision = classifyNavigation(url, ownPage);
+    if (decision === 'allow') return;
     event.preventDefault();
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (decision === 'open-external') {
       shell.openExternal(url);
+    } else {
+      log.warn(`[terminal] Blocked navigation to ${url.slice(0, 200)}`);
     }
   });
 
