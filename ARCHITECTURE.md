@@ -13,13 +13,18 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 
 - `index.ts`: the app. Tray icon, popup, settings and status windows, the app menu, every
   `ipcMain` handler, global shortcuts, opening terminal sessions
-  (`openSessionForProject`, `openSessionForProjectWithId`), bell notifications, the dock,
+  (`openSessionForProject`, `openSessionForProjectWithId`) and recording them in
+  `terminalSessions` (a `SessionRegistry`), bell notifications, the dock,
   the restore set, upgrade restart and the quit confirmation. Start here.
-- `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Chooses
-  `--continue`, `--resume <id>` or neither, and adds `--permission-mode` (plus
-  `--dangerously-skip-permissions` for `bypassPermissions`).
-- `terminal-window.ts`: creates terminal windows, cycles between them, and opens the
-  external terminal (Cmd+T).
+- `pty.ts`: starts `claude` in a node-pty PTY and relays its output and exit. Its
+  arguments (`--continue`, `--resume <id>` or neither, then the permission mode flags) come
+  from `terminalSessionArgs` in `permission-mode.ts`.
+- `terminal-window.ts`: creates terminal windows, cycles between them, opens the
+  external terminal (Cmd+T), and guards each window's navigation with
+  `navigation-guard.ts`.
+- `navigation-guard.ts`: decides whether a navigation loads (the window's own page, query
+  string ignored), opens in the system browser (http(s) to any non-loopback host) or is
+  dropped (everything else). Electron-free and unit-tested.
 - `claude.ts`: finds the `claude` binary (known paths, then `which` in a login shell).
 - `env.ts`: builds the environment for every `claude` process by capturing the user's
   interactive shell ([ADR 0005](docs/adr/0005-capture-interactive-shell-env-per-spawn.md)).
@@ -54,7 +59,13 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   so nothing in a folder name runs as a command. Electron-free and unit-tested.
 - `permission-mode.ts`: pure helpers for the permission mode a terminal session or
   headless schedule run starts in (explicit choice, else the project's default, else
-  Claude Code's default) and the matching CLI flags for headless runs.
+  Claude Code's default) and the matching CLI flags, for terminal sessions
+  (`terminalSessionArgs`, used by `pty.ts`) and headless runs alike.
+- `session-registry.ts`: `SessionRegistry`, every running terminal session keyed by
+  terminal session id, with lookups by window and by project, the count, the per-project
+  view the popup reads (`sessions-changed`, `get-active-sessions`: newest terminal session
+  per project) and the restore set's project list (each project once). Electron-free and
+  unit-tested.
 
 ### `src/preload.ts`
 
@@ -72,6 +83,8 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 - `index.html` → `App.tsx`: the popup. Project list with search and keyboard navigation,
   conversation history per project, add and create project, and `ProjectEditor.tsx`
   (details, permission mode, project environment variables, schedules and their runs).
+  Multi-line fields use `UndoableTextarea.tsx` rather than a controlled `<textarea>`, so
+  Cmd+Z undoes a typed run instead of one character (#33; see the invariant below).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
   permission mode badge, the custom key handler (Shift+Enter, via `terminal-keys.ts`), and
   file drops: dropping files or folders types their quoted paths (via `dropped-paths.ts`),
@@ -95,6 +108,10 @@ Enter).
 
 - `test/`: `node --test` unit tests for the Electron-free modules, run against the compiled
   output in `dist/main/` (`npm test` builds first).
+  `test/electron/undo/` is a separate Electron check (Linux, `xvfb-run`; not part of `npm
+  test`): it loads the built popup and settings pages with a stubbed `window.cockpit`, types
+  into every text field and counts the undos needed to get back (`test/electron/undo/run.sh`
+  after `npm run build:renderer`).
 - `.githooks/pre-push`: when a `v*` tag is pushed, makes `package.json` match the tag;
   see Releases in `CLAUDE.md`.
 - `.github/workflows/release.yml`: on a `v*` tag, runs `npm test` (a failure stops the
@@ -109,8 +126,17 @@ Enter).
 - **Renderers have no Node access.** Every window uses `contextIsolation: true` and
   `nodeIntegration: false`; anything that touches files, processes or the network is an IPC
   handler in `index.ts`.
+- **A terminal window only ever shows its own page**: the packaged `terminal.html`, or
+  `http://localhost:5173/terminal.html` in development. Its `will-navigate` and
+  `setWindowOpenHandler` handlers go through `classifyNavigation` (`navigation-guard.ts`):
+  web links open in the system browser, and other `file://` pages, other loopback (localhost, 127.0.0.1, ::1) pages
+  and other schemes are dropped and logged. The popup, settings and status windows in
+  `index.ts` have no such guard yet.
 - **Terminal input is routed by window, never by a renderer-supplied ID.** `pty-input` and
-  `pty-resize` look up the sender window in `windowToSession`.
+  `pty-resize` look up the sender window in the session registry (`findByWindow`).
+- **Every running terminal session is in the session registry.** It is added when its
+  window is created and removed when the window closes or a failed continue is replaced;
+  nothing keeps a separate per-project record (#58).
 - **A terminal window and its PTY end together.** Closing the window kills the PTY; the PTY
   exiting closes the window ([ADR 0001](docs/adr/0001-embedded-terminal-spawns-claude-directly.md)).
 - **Every terminal session's permission mode comes from `resolvePermissionMode`.**
@@ -130,6 +156,11 @@ Enter).
 - **A folder path never reaches a shell unquoted.** Cmd+T hands the path to Warp, Kitty
   and custom apps as an `open -a` argument, and to Terminal and iTerm only through
   `external-terminal-script.ts`.
+- **Text fields keep the browser's undo.** Cmd+Z and Cmd+Shift+Z come from the Edit menu's
+  `undo`/`redo` roles, which act on Chromium's own undo stack; nothing in the renderers keeps
+  its own. A controlled React `<textarea>` breaks that stack's grouping (React rewrites its
+  text child on every change), so textareas go through `UndoableTextarea`. `<input>` fields
+  are not affected and stay ordinary controlled inputs.
 - **Only the main process writes Cockpit's data.** Cockpit never writes Claude Code's data
   except to delete a conversation file the user asked to delete.
 

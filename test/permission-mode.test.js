@@ -64,3 +64,30 @@ test('headlessScheduleArgs: project mode flags come before -p <prompt>', () => {
     'do it',
   ]);
 });
+
+// #63: spawnClaude in pty.ts builds its arguments with terminalSessionArgs,
+// which reuses permissionModeArgs instead of repeating the flag rule.
+const { terminalSessionArgs } = require('../dist/main/main/permission-mode.js');
+
+test('terminalSessionArgs: --continue by default, then the mode flags', () => {
+  assert.deepEqual(terminalSessionArgs({}), ['--continue']);
+  assert.deepEqual(terminalSessionArgs({ permissionMode: 'plan' }), ['--continue', '--permission-mode', 'plan']);
+});
+
+test('terminalSessionArgs: continueSession false starts a new conversation', () => {
+  assert.deepEqual(terminalSessionArgs({ continueSession: false }), []);
+  assert.deepEqual(terminalSessionArgs({ continueSession: false, permissionMode: 'default' }), []);
+});
+
+test('terminalSessionArgs: resume wins over continue', () => {
+  assert.deepEqual(
+    terminalSessionArgs({ resumeSessionId: 'abc', continueSession: true, permissionMode: 'bypassPermissions' }),
+    ['--resume', 'abc', '--permission-mode', 'bypassPermissions', '--dangerously-skip-permissions']
+  );
+});
+
+test('terminalSessionArgs: mode flags match permissionModeArgs for every mode', () => {
+  for (const mode of ALL_MODES) {
+    assert.deepEqual(terminalSessionArgs({ continueSession: false, permissionMode: mode }), permissionModeArgs(mode));
+  }
+});
