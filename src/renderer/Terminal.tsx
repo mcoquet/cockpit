@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import type { PermissionMode } from '../shared/types';
 import { mapTerminalKey } from '../shared/terminal-keys';
+import { droppedPathsText } from '../shared/dropped-paths';
 
 // Apply dev mode class if running in development
 if (new URLSearchParams(window.location.search).has('dev')) {
@@ -20,6 +21,7 @@ export default function Terminal() {
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isFocused, setIsFocused] = useState(true);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
   const title = params.get('title') || '';
@@ -291,8 +293,47 @@ export default function Terminal() {
     const container = containerRef.current;
     container?.addEventListener('contextmenu', handleContextMenu);
 
+    // Dropping files types their quoted paths, like iTerm (#5). Handled on the
+    // whole window and always preventDefault'ed, so Electron never navigates
+    // the window to a dropped file.
+    let dragDepth = 0;
+    const hasFiles = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      if (!hasFiles(e)) return;
+      dragDepth++;
+      setIsDraggingFiles(true);
+    };
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = hasFiles(e) ? 'copy' : 'none';
+    };
+    const handleDragLeave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) setIsDraggingFiles(false);
+    };
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragDepth = 0;
+      setIsDraggingFiles(false);
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      const text = droppedPathsText(files.map((f) => window.terminal.getPathForFile(f)));
+      if (!text) return;
+      window.terminal.sendInput(text);
+      terminal.focus();
+    };
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('drop', handleDrop);
+
     return () => {
       container?.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('drop', handleDrop);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
@@ -350,7 +391,7 @@ export default function Terminal() {
           </div>
         )}
       </div>
-      <div className={`terminal-wrapper ${!isFocused ? 'unfocused' : ''}`}>
+      <div className={`terminal-wrapper ${!isFocused ? 'unfocused' : ''} ${isDraggingFiles ? 'dragging-files' : ''}`}>
         <div ref={containerRef} className="terminal-container" />
         <div className="terminal-spacer" />
       </div>
