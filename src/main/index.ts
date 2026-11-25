@@ -9,6 +9,7 @@ import * as terminalWindow from './terminal-window';
 import { shouldShowDock } from './window-count';
 import { requestPermission } from './permissions';
 import { resolvePermissionMode } from './permission-mode';
+import { SessionRegistry } from './session-registry';
 import * as settings from './settings';
 import { getClaudeStats } from './claude-stats';
 import * as sessions from './sessions';
@@ -17,7 +18,7 @@ import * as schedulerExecutor from './scheduler-executor';
 import { getEnvVarsForProject } from './session-env';
 import { expandProjectPath, isDeletableProjectFolder } from './project-path';
 import type { AppSettings } from '../shared/types';
-import type { Project, ActiveSession, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
+import type { Project, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
 let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
@@ -27,12 +28,10 @@ let statusWindow: BrowserWindow | null = null;
 // Use omega (Ω) in dev mode, lambda (λ) in production
 const TRAY_SYMBOL = process.env.NODE_ENV === 'development' ? 'Ω' : 'λ';
 
-// Track active sessions in memory
-const activeSessions: Record<string, ActiveSession> = {};
-
-// Map windowId to sessionId for reliable PTY input routing
-// (activeSessions is keyed by projectPath, which doesn't support multiple sessions per project)
-const windowToSession = new Map<number, string>();
+// Every running terminal session, keyed by terminal session id (#58). Window
+// lookups (PTY input routing, Cmd+T, Cmd+N) and per-project views (popup,
+// restore set) are all derived from it.
+const terminalSessions = new SessionRegistry();
 
 // Debounce bell notifications per session (prevent spam)
 const lastBellTime: Record<string, number> = {};
@@ -75,7 +74,7 @@ function createPopupWindow(): BrowserWindow {
 
 function updateTrayTitle(): void {
   if (!tray) return;
-  const hasActive = Object.keys(activeSessions).length > 0;
+  const hasActive = terminalSessions.count() > 0;
   // Show bullet indicator when sessions are active
   tray.setTitle(hasActive ? `● ${TRAY_SYMBOL}` : TRAY_SYMBOL);
 }
@@ -208,10 +207,8 @@ function showStatusWindow(): void {
 function updateDockVisibility(): void {
   if (process.platform !== 'darwin' || !app.dock) return;
 
-  // Count actual open terminal windows, not activeSessions entries.
-  // activeSessions is keyed by projectPath, so multiple windows for the same
-  // project collapse to one entry — closing one would otherwise hide the dock
-  // while another window is still open (#4).
+  // Count actual open terminal windows (#4): a window can still be open for a
+  // moment after its terminal session has left the registry.
   if (shouldShowDock(terminalWindow.getTerminalWindowCount())) {
     app.dock.show();
   } else {
@@ -221,7 +218,7 @@ function updateDockVisibility(): void {
 
 function notifySessionsChanged(): void {
   if (popupWindow && !popupWindow.isDestroyed()) {
-    popupWindow.webContents.send('sessions-changed', activeSessions);
+    popupWindow.webContents.send('sessions-changed', terminalSessions.projectView());
   }
   updateTrayIcon();
   updateDockVisibility();
@@ -237,10 +234,9 @@ function registerIpcHandlers(): void {
   ipcMain.handle('update-project', (_event, projectPath: string, updates: Partial<Project>) => {
     const updatedProject = store.updateProject(projectPath, updates);
 
-    // Update terminal window title if this project has an active session
-    const session = activeSessions[projectPath];
-    if (session) {
-      const projectName = updatedProject.name || projectPath.split('/').pop() || 'Terminal';
+    // Update the title of every terminal window open for this project
+    const projectName = updatedProject.name || projectPath.split('/').pop() || 'Terminal';
+    for (const session of terminalSessions.forProject(projectPath)) {
       terminalWindow.updateTerminalWindowTitle(session.sessionId, projectName, {
         hasGit: updatedProject.hasGit,
         githubUrl: updatedProject.githubUrl,
@@ -373,7 +369,7 @@ function registerIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle('get-active-sessions', () => activeSessions);
+  ipcMain.handle('get-active-sessions', () => terminalSessions.projectView());
 
   ipcMain.handle('open-session', async (_event, projectPath: string, forceNew?: boolean, permissionMode?: PermissionMode, altKey?: boolean) => {
     if (popupWindow) {
@@ -472,7 +468,7 @@ function registerIpcHandlers(): void {
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
     if (!senderWindow) return;
 
-    const sessionId = windowToSession.get(senderWindow.id);
+    const sessionId = terminalSessions.findByWindow(senderWindow.id)?.sessionId;
     if (sessionId) {
       pty.writeToSession(sessionId, data);
     }
@@ -482,7 +478,7 @@ function registerIpcHandlers(): void {
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
     if (!senderWindow) return;
 
-    const sessionId = windowToSession.get(senderWindow.id);
+    const sessionId = terminalSessions.findByWindow(senderWindow.id)?.sessionId;
     if (sessionId) {
       pty.resizeSession(sessionId, cols, rows);
     }
@@ -514,19 +510,14 @@ function registerIpcHandlers(): void {
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
     if (!senderWindow) return;
 
-    const sessionId = windowToSession.get(senderWindow.id);
+    const sessionId = terminalSessions.findByWindow(senderWindow.id)?.sessionId;
     if (!sessionId) return;
 
     // Inject /permissions command into PTY
     pty.writeToSession(sessionId, `/permissions ${mode}\n`);
 
-    // Update activeSessions record
-    for (const [projectPath, session] of Object.entries(activeSessions)) {
-      if (session.sessionId === sessionId) {
-        activeSessions[projectPath] = { ...session, permissionMode: mode };
-        notifySessionsChanged();
-        break;
-      }
+    if (terminalSessions.setPermissionMode(sessionId, mode)) {
+      notifySessionsChanged();
     }
   });
 
@@ -650,14 +641,8 @@ function openNewSessionInCurrentProject(): void {
     return;
   }
 
-  // Find the project path for the focused window
-  let projectPath: string | null = null;
-  for (const [path, session] of Object.entries(activeSessions)) {
-    if (session.windowId === focusedWindowId) {
-      projectPath = path;
-      break;
-    }
-  }
+  // The project of the last-used terminal window, whichever it is (#58)
+  const projectPath = terminalSessions.findByWindow(focusedWindowId)?.projectPath;
 
   if (!projectPath) {
     showPopupWindow();
@@ -693,8 +678,9 @@ const openingProjects = new Set<string>();
 
 // With no explicitMode, the terminal session starts in the project's default
 // permission mode (#56). Every open path goes through here.
-async function openSessionForProject(projectPath: string, forceNew: boolean, explicitMode?: PermissionMode): Promise<void> {
-  const existing = activeSessions[projectPath];
+// Resolves to the new terminal session's id, or undefined if none was opened.
+async function openSessionForProject(projectPath: string, forceNew: boolean, explicitMode?: PermissionMode): Promise<string | undefined> {
+  const existing = terminalSessions.latestForProject(projectPath);
   log.info('[open-session] projectPath:', projectPath, 'existing:', existing, 'forceNew:', forceNew);
 
   if (existing && !forceNew) {
@@ -703,10 +689,10 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, exp
     if (exists) {
       const focused = terminalWindow.focusTerminalWindow(existing.sessionId);
       log.info('[open-session] focusTerminalWindow result:', focused);
-      return;
+      return undefined;
     }
     log.info('[open-session] session gone, removing');
-    delete activeSessions[projectPath];
+    terminalSessions.remove(existing.sessionId);
   }
 
   const claudePath = findClaudeBinary();
@@ -715,7 +701,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, exp
       'Claude not found',
       'Could not find the claude CLI. Please ensure claude is installed and accessible.'
     );
-    return;
+    return undefined;
   }
 
   const projects = store.getProjects();
@@ -726,7 +712,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, exp
   // Spawning waits on the shell env capture; ignore repeat clicks meanwhile.
   if (!forceNew && openingProjects.has(projectPath)) {
     log.info('[open-session] already opening, ignoring:', projectPath);
-    return;
+    return undefined;
   }
 
   log.info('[open-session] creating new session with claude at:', claudePath, 'forceNew:', forceNew);
@@ -753,20 +739,13 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, exp
     onClose: () => {
       log.info('[terminal-window] closed, cleaning up session:', sessionId);
       pty.killSession(sessionId);
-      // Only delete if this is the session for this project
-      if (activeSessions[projectPath]?.sessionId === sessionId) {
-        delete activeSessions[projectPath];
-      }
-      windowToSession.delete(win.id);
+      terminalSessions.remove(sessionId);
       delete lastBellTime[sessionId];
       notifySessionsChanged();
     },
   });
 
-  // For multiple sessions per project, we need a different key
-  // But for now, keep the simple model - just track the latest
-  activeSessions[projectPath] = { sessionId, windowId: win.id, permissionMode };
-  windowToSession.set(win.id, sessionId);
+  terminalSessions.add({ sessionId, windowId: win.id, projectPath, permissionMode });
   notifySessionsChanged();
 
   pty.onSessionOutput(sessionId, (data) => {
@@ -803,9 +782,7 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, exp
       log.info('[pty-exit] quick failure with --continue, retrying without it');
       terminalWindow.closeTerminalWindow(sessionId);
       // Clean up and retry
-      if (activeSessions[projectPath]?.sessionId === sessionId) {
-        delete activeSessions[projectPath];
-      }
+      terminalSessions.remove(sessionId);
       notifySessionsChanged();
       openSessionForProject(projectPath, true, explicitMode); // force new session, same mode
       return;
@@ -819,6 +796,8 @@ async function openSessionForProject(projectPath: string, forceNew: boolean, exp
 
     terminalWindow.closeTerminalWindow(sessionId);
   });
+
+  return sessionId;
 }
 
 async function openSessionForProjectWithId(projectPath: string, sessionId: string): Promise<void> {
@@ -854,17 +833,13 @@ async function openSessionForProjectWithId(projectPath: string, sessionId: strin
     onClose: () => {
       log.info('[terminal-window] closed, cleaning up session:', newSessionId);
       pty.killSession(newSessionId);
-      if (activeSessions[projectPath]?.sessionId === newSessionId) {
-        delete activeSessions[projectPath];
-      }
-      windowToSession.delete(win.id);
+      terminalSessions.remove(newSessionId);
       delete lastBellTime[newSessionId];
       notifySessionsChanged();
     },
   });
 
-  activeSessions[projectPath] = { sessionId: newSessionId, windowId: win.id, permissionMode };
-  windowToSession.set(win.id, newSessionId);
+  terminalSessions.add({ sessionId: newSessionId, windowId: win.id, projectPath, permissionMode });
   notifySessionsChanged();
 
   pty.onSessionOutput(newSessionId, (data) => {
@@ -1016,15 +991,9 @@ function createAppMenu(): void {
           label: 'Open in External Terminal',
           accelerator: 'CommandOrControl+T',
           click: () => {
-            const focusedWindowId = terminalWindow.getFocusedTerminalWindowId();
-            if (!focusedWindowId) return;
-            // Find the sessionId for the focused window
-            for (const session of Object.values(activeSessions)) {
-              if (session.windowId === focusedWindowId) {
-                terminalWindow.openExternalTerminal(session.sessionId);
-                break;
-              }
-            }
+            // Any terminal window, not only a project's newest one (#58)
+            const session = terminalSessions.findByWindow(terminalWindow.getFocusedTerminalWindowId());
+            if (session) terminalWindow.openExternalTerminal(session.sessionId);
           },
         },
       ],
@@ -1068,8 +1037,8 @@ function watchForUpgrade(): void {
           // Check if the plist exists (app bundle is complete)
           if (!fs.existsSync(plistPath)) return;
 
-          // Save active sessions for auto-restore after upgrade
-          const sessionPaths = Object.keys(activeSessions);
+          // Save the restore set (each project once) for auto-restore after upgrade
+          const sessionPaths = terminalSessions.restoreSetPaths();
           if (sessionPaths.length > 0) {
             store.savePreviousSession(sessionPaths);
             store.setUpgradeRestart(true);
@@ -1112,12 +1081,12 @@ app.whenReady().then(() => {
 
   // Initialize scheduler
   schedulerExecutor.setOpenSessionFn(async (projectPath: string, prompt: string) => {
-    await openSessionForProject(projectPath, true);
-    // Wait a moment for session to be ready, then send prompt
+    const sessionId = await openSessionForProject(projectPath, true);
+    // Wait a moment for the terminal session to be ready, then send the prompt
+    // to the one just opened (not some other window of the project)
     setTimeout(() => {
-      const session = activeSessions[projectPath];
-      if (session) {
-        pty.writeToSession(session.sessionId, prompt + '\n');
+      if (sessionId && pty.sessionExists(sessionId)) {
+        pty.writeToSession(sessionId, prompt + '\n');
       }
     }, 2000);
   });
@@ -1172,7 +1141,8 @@ let isQuitting = false;
 app.on('before-quit', async (event) => {
   if (isQuitting) return;
 
-  const sessionCount = Object.keys(activeSessions).length;
+  // Counts terminal sessions, not projects (#58)
+  const sessionCount = terminalSessions.count();
   if (sessionCount === 0) return;
 
   event.preventDefault();
@@ -1188,8 +1158,8 @@ app.on('before-quit', async (event) => {
   });
 
   if (response === 1) {
-    // Save active sessions for potential restore
-    const sessionPaths = Object.keys(activeSessions);
+    // Save the restore set (each project once) for potential restore
+    const sessionPaths = terminalSessions.restoreSetPaths();
     store.savePreviousSession(sessionPaths);
     log.info('[quit] Saved', sessionPaths.length, 'sessions for restore');
 
