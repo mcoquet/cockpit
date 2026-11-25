@@ -39,7 +39,8 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.
 - `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.
-  The folder path is single-quoted for the shell, then escaped as an AppleScript string,
+  The folder path is single-quoted for the shell (`shellSingleQuote`, now in
+  `src/shared/shell-quote.ts` and re-exported here), then escaped as an AppleScript string,
   so nothing in a folder name runs as a command. Electron-free and unit-tested.
 - `permission-mode.ts`: pure helpers for the permission mode a terminal session or
   headless schedule run starts in (explicit choice, else the project's default, else
@@ -50,7 +51,9 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 Exposes `window.cockpit` (popup, settings and status windows) and `window.terminal`
 (terminal windows). Each method is one `ipcRenderer.invoke`/`send` to a channel handled in
 `index.ts`, or an `ipcRenderer.on` subscription to an event the main process sends
-(`schedule-run-started` comes from `scheduler.ts`). The types for both live in `src/shared/types.ts` (`CockpitAPI`, `TerminalAPI`).
+(`schedule-run-started` comes from `scheduler.ts`). The one exception is
+`window.terminal.getPathForFile`, which calls Electron's `webUtils.getPathForFile` in the
+preload itself (Electron no longer gives renderers `File.path`). The types for both live in `src/shared/types.ts` (`CockpitAPI`, `TerminalAPI`).
 
 ### `src/renderer/`: windows
 
@@ -60,7 +63,9 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
   conversation history per project, add and create project, and `ProjectEditor.tsx`
   (details, permission mode, project environment variables, schedules and their runs).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
-  permission mode badge, and the custom key handler (Shift+Enter, via `terminal-keys.ts`).
+  permission mode badge, the custom key handler (Shift+Enter, via `terminal-keys.ts`), and
+  file drops: dropping files or folders types their quoted paths (via `dropped-paths.ts`),
+  and every drop is `preventDefault`ed so the window never navigates to a dropped file.
 - `settings.html` → `Settings.tsx` (with `EnvVarsEditor.tsx`).
 - `status.html` → `Status.tsx`.
 
@@ -69,9 +74,12 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 `types.ts` (data types and the two bridge APIs) and `env-vars.ts` (pure environment
 variable helpers used by both sides). Pure renderer helpers live here too, so the `node
 --test` suite can reach them through `dist/main/shared/`: `terminal-keys.ts` (Shift+Enter
-sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline)
-and `path-display.ts` (splits a location so the popup's Create tab truncates it in the
-middle and keeps the last folder visible).
+sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline),
+`path-display.ts` (splits a location so the popup's Create tab truncates it in the
+middle and keeps the last folder visible), `shell-quote.ts` (`shellSingleQuote`, also
+used by the main process for Cmd+T) and `dropped-paths.ts` (the text a file drop types
+into a terminal window: each path single-quoted, space-separated, one trailing space, no
+Enter).
 
 ### Elsewhere
 

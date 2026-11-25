@@ -6,10 +6,10 @@
 //    `"` and `\` in a folder name are plain characters. A `'` is written `'\''`.
 // 2. The resulting shell command is escaped as an AppleScript string literal.
 
-/** Quote a string as one shell word: '…' with each ' written as '\''. */
-export function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
+import { shellSingleQuote } from '../shared/shell-quote';
+
+// Moved to src/shared so the terminal renderer can use it too (#5).
+export { shellSingleQuote };
 
 /** Quote a string as an AppleScript string literal, double quotes included. */
 export function appleScriptString(value: string): string {

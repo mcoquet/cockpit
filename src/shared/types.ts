@@ -116,6 +116,8 @@ export interface TerminalAPI {
   showContextMenu: (options: ContextMenuOptions) => void;
   openExternal: (url: string) => void;
   changePermissionMode: (mode: PermissionMode) => void;
+  /** Absolute path of a dropped File; '' when it has none (e.g. dragged from a web page). */
+  getPathForFile: (file: File) => string;
 }
 
 // Scheduler types
