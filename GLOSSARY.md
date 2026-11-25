@@ -9,7 +9,8 @@ Cockpit adds or narrows.
 
 **Project**:
 A local folder that Cockpit keeps in its list so Claude Code can be launched in it. Its
-identity is its location relative to the user's home folder.
+identity is its location: relative to the user's home folder for folders inside it,
+otherwise absolute.
 _Avoid_: repo, workspace, folder (for the concept)
 
 **Popup**:
@@ -43,14 +44,14 @@ The past conversations of a project, newest first, as listed in the popup.
 _Avoid_: session history, sessions
 
 **Summary**:
-A short description of a conversation, of ten words or fewer, that Cockpit generates when
-the terminal session for it ends. The history shows it in place of the conversation's
+A short description of a conversation (at most 100 characters) that Cockpit generates
+when the terminal session for it ends. The history shows it in place of the conversation's
 first message.
 _Avoid_: title, label
 
 **Restore set**:
-The projects that had terminal sessions running when Cockpit last quit or restarted for an
-upgrade, kept so they can be reopened together.
+The projects that had active terminal sessions the last time Cockpit quit with any running,
+or restarted for an upgrade, kept so they can be reopened together once.
 _Avoid_: previous session, last session, workspace
 
 **Upgrade restart**:
@@ -124,6 +125,6 @@ the user's Claude Code usage stats.
 _Avoid_: dashboard, stats window
 
 **Usage stats**:
-Counts of messages, Claude Code sessions and tool calls for today, the last 7 days and the
-last 30 days, read from Claude Code's own local statistics.
+Counts of messages, Claude Code sessions and tool calls over the last 7 and the last 30
+days, read from Claude Code's own local statistics.
 _Avoid_: analytics, metrics
