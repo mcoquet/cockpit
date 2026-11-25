@@ -12,7 +12,7 @@ Click the **λ** in your menubar to see your projects. Select one and a terminal
 
 That's it. No `cd`-ing around. No hunting for the right terminal tab.
 
-**Adding projects:** Click "+ Add Project" and pick a folder, or create a new project folder from the popup. Cockpit remembers it.
+**Adding projects:** Click "+ Add Existing" and pick a folder, or switch to the **Create** tab (Shift+Tab) to make a new project folder. Cockpit remembers it.
 
 **New or past conversations:** Selecting a project always starts a new conversation, in a new window. To pick up an earlier one, expand the project (→) to see its conversation history, with a short summary of each, and select it. Right-click a past conversation to delete it.
 
