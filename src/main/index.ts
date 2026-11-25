@@ -19,6 +19,7 @@ import { getEnvVarsForProject } from './session-env';
 import { expandProjectPath, isDeletableProjectFolder } from './project-path';
 import { createCapabilitiesReader } from './project-capabilities';
 import { askRemoveProject, buildRemoveDialogText } from './project-removal';
+import { guardWindowNavigation, rendererPageUrl } from './window-navigation';
 import type { AppSettings } from '../shared/types';
 import type { Project, ServiceStatus, ContextMenuOptions, Schedule, PermissionMode } from '../shared/types';
 
@@ -38,6 +39,24 @@ const terminalSessions = new SessionRegistry();
 // Debounce bell notifications per session (prevent spam)
 const lastBellTime: Record<string, number> = {};
 const BELL_DEBOUNCE_MS = 10000; // 10 seconds between notifications
+
+const isDev = process.env.NODE_ENV === 'development';
+const RENDERER_DIR = path.join(__dirname, '../../renderer');
+
+// Loads a renderer page into a window and keeps the window on it (#76): web
+// links open in the system browser, anything else is dropped and logged.
+function loadOwnPage(win: BrowserWindow, page: string, label: string): void {
+  const ownPage = rendererPageUrl(page, { dev: isDev, rendererDir: RENDERER_DIR });
+  guardWindowNavigation(win.webContents, ownPage, label, {
+    openExternal: (url) => { shell.openExternal(url); },
+    warn: (message) => log.warn(message),
+  });
+  if (isDev) {
+    win.loadURL(`${ownPage}?dev=1`);
+  } else {
+    win.loadFile(path.join(RENDERER_DIR, page));
+  }
+}
 
 function createPopupWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -65,11 +84,7 @@ function createPopupWindow(): BrowserWindow {
     popupWindow = null;
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5173?dev=1');
-  } else {
-    win.loadFile(path.join(__dirname, '../../renderer/index.html'));
-  }
+  loadOwnPage(win, 'index.html', 'popup');
 
   return win;
 }
@@ -144,11 +159,7 @@ function createSettingsWindow(): BrowserWindow {
     },
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5173/settings.html?dev=1');
-  } else {
-    win.loadFile(path.join(__dirname, '../../renderer/settings.html'));
-  }
+  loadOwnPage(win, 'settings.html', 'settings');
 
   win.on('closed', () => {
     settingsWindow = null;
@@ -185,11 +196,7 @@ function createStatusWindow(): BrowserWindow {
     },
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5173/status.html?dev=1');
-  } else {
-    win.loadFile(path.join(__dirname, '../../renderer/status.html'));
-  }
+  loadOwnPage(win, 'status.html', 'status');
 
   win.on('closed', () => {
     statusWindow = null;
@@ -996,7 +1003,6 @@ function createAppMenu(): void {
 
 // Enforce single instance - show popup if already running
 // Skip in development to allow dev and prod to run side-by-side
-const isDev = process.env.NODE_ENV === 'development';
 const gotTheLock = isDev || app.requestSingleInstanceLock();
 
 if (!gotTheLock) {

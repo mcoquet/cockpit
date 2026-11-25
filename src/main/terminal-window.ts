@@ -1,11 +1,10 @@
 import { BrowserWindow, dialog, shell } from 'electron';
 import log from 'electron-log';
 import path from 'path';
-import { pathToFileURL } from 'url';
 import { execFile } from 'child_process';
 import * as settings from './settings';
 import { countLiveWindows } from './window-count';
-import { classifyNavigation } from './navigation-guard';
+import { guardWindowNavigation, rendererPageUrl } from './window-navigation';
 import { expandProjectPath } from './project-path';
 import { terminalAppScript, iTermScript } from './external-terminal-script';
 import type { PermissionMode } from '../shared/types';
@@ -53,9 +52,10 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
 
   // The only page this window may show (#69); query strings are ignored.
   const terminalPagePath = path.join(__dirname, '../../renderer/terminal.html');
-  const ownPage = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:5173/terminal.html'
-    : pathToFileURL(terminalPagePath).href;
+  const ownPage = rendererPageUrl('terminal.html', {
+    dev: process.env.NODE_ENV === 'development',
+    rendererDir: path.join(__dirname, '../../renderer'),
+  });
 
   // Pass sessionId and title to renderer via query param
   if (process.env.NODE_ENV === 'development') {
@@ -78,29 +78,12 @@ export function createTerminalWindow(options: TerminalWindowOptions): BrowserWin
     });
   }
 
-  // Never open a second Electron window: web links go to the system browser,
-  // anything else is dropped (#69).
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (classifyNavigation(url, ownPage) === 'open-external') {
-      shell.openExternal(url);
-    } else {
-      log.warn(`[terminal] Dropped window.open to ${url.slice(0, 200)}`);
-    }
-    return { action: 'deny' };
-  });
-
-  // A terminal window only ever shows its own page (#69). Web links open in
+  // A terminal window only ever shows its own page (#69): web links open in
   // the system browser; other file:// pages, other localhost pages and odd
-  // schemes are dropped.
-  win.webContents.on('will-navigate', (event, url) => {
-    const decision = classifyNavigation(url, ownPage);
-    if (decision === 'allow') return;
-    event.preventDefault();
-    if (decision === 'open-external') {
-      shell.openExternal(url);
-    } else {
-      log.warn(`[terminal] Blocked navigation to ${url.slice(0, 200)}`);
-    }
+  // schemes are dropped. window.open never makes a second Electron window.
+  guardWindowNavigation(win.webContents, ownPage, 'terminal', {
+    openExternal: (url) => { shell.openExternal(url); },
+    warn: (message) => log.warn(message),
   });
 
   // Set title after page loads (HTML title would otherwise override)
