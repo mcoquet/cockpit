@@ -38,6 +38,9 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.
   The folder path is single-quoted for the shell, then escaped as an AppleScript string,
   so nothing in a folder name runs as a command. Electron-free and unit-tested.
+- `permission-mode.ts`: pure helpers for the permission mode a terminal session or
+  headless schedule run starts in (explicit choice, else the project's default, else
+  Claude Code's default) and the matching CLI flags for headless runs.
 
 ### `src/preload.ts`
 
@@ -89,6 +92,10 @@ middle and keeps the last folder visible).
   `pty-resize` look up the sender window in `windowToSession`.
 - **A terminal window and its PTY end together.** Closing the window kills the PTY; the PTY
   exiting closes the window ([ADR 0001](docs/adr/0001-embedded-terminal-spawns-claude-directly.md)).
+- **Every terminal session's permission mode comes from `resolvePermissionMode`.**
+  `openSessionForProject` resolves it when no mode is passed, so callers pass a mode only
+  for an explicit Option+click choice; `openSessionForProjectWithId` and headless schedule
+  runs (`scheduler-executor.ts`) use it too.
 - **Every `claude` process gets its environment from `getClaudeSpawnEnv`.** Terminal
   sessions, headless schedule runs, summaries and schedule interpretation all go through
   it, so they all see the user's shell environment plus Cockpit's environment variables.
