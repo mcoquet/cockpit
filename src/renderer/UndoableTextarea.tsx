@@ -13,7 +13,9 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'defaul
  * child) on every change. That DOM write closes Chromium's typing undo group, so Cmd+Z
  * removes one character at a time. Here React never gets a `value` prop; the text
  * the user types stays in the element, and only changes made by the app (clearing,
- * loading a project) are written to `el.value`. Use it like a controlled textarea.
+ * loading a project) are written to `el.value`. Use it like a controlled textarea,
+ * with one rule: `onChange` must store `e.target.value` as is. It cannot reject or
+ * rewrite input the way a controlled textarea can (the typed text would stay).
  */
 export default function UndoableTextarea({ value, ref, ...rest }: Props) {
   const inner = useRef<HTMLTextAreaElement>(null);

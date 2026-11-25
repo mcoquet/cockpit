@@ -19,11 +19,19 @@ module.exports = async ({ js, click, check, report, shot, sleep }) => {
   await click('.add-schedule-btn');
   await check('schedule description (textarea)', '.nl-input-row textarea', 'every weekday');
   await shot('schedule-describe.png');
-  // A change made by the app (Cancel resets the form) must still reach the textarea.
+  // Interpret fills the form from the (stubbed) parse; Edit Details mounts the prompt
+  // textarea with a value the app set, which must show and then undo back to it.
+  await click('.interpret-btn');
+  await sleep(300);
+  await click('.schedule-form button', 'Edit Details');
+  const filled = await js(`document.querySelector('.schedule-form textarea').value`);
+  report(filled === 'Check for security issues', `schedule prompt prefilled by Interpret (textarea mount) | value=${JSON.stringify(filled)}`);
+  await check('schedule prompt (textarea, prefilled)', '.schedule-form textarea', ' daily');
+  // Cancel unmounts the form; reopening must start empty again.
   await click('.schedule-form button', 'Cancel');
   await click('.add-schedule-btn');
   const after = await js(`document.querySelector('.nl-input-row textarea').value`);
-  report(after === '', `schedule description cleared by Cancel | value=${JSON.stringify(after)}`);
+  report(after === '', `schedule description empty after Cancel and reopen (remount) | value=${JSON.stringify(after)}`);
   await click('.schedule-form button', 'Manual Entry');
   await check('schedule name (input)', '.schedule-form input[type=text]', 'Daily');
   await check('schedule prompt (textarea)', '.schedule-form textarea', 'run tests');
