@@ -1,11 +1,11 @@
-import cron, { ScheduledTask } from 'node-cron';
 import { v4 as uuidv4 } from 'uuid';
 import { BrowserWindow } from 'electron';
 import * as store from './store';
+import { createJobRegistry } from './job-registry';
 import type { Schedule, ScheduleRun } from '../shared/types';
 
 // Active cron jobs keyed by schedule ID
-const activeJobs = new Map<string, ScheduledTask>();
+const jobs = createJobRegistry();
 
 // Queue of pending runs per schedule
 const runQueues = new Map<string, ScheduleRun[]>();
@@ -69,6 +69,20 @@ export function deleteSchedule(id: string): boolean {
   return store.deleteSchedule(id);
 }
 
+/**
+ * Delete every schedule of a project being removed (#53): stop their cron jobs,
+ * drop their queued runs, and delete the schedules and their schedule runs.
+ * A run already in progress may finish, but its record is not saved (runTask).
+ */
+export function deleteSchedulesForProject(projectPath: string): string[] {
+  const removedIds = store.deleteSchedulesForProject(projectPath);
+  for (const id of removedIds) {
+    unregisterJob(id);
+    runQueues.delete(id);
+  }
+  return removedIds;
+}
+
 export function listSchedules(projectPath?: string): Schedule[] {
   if (projectPath) {
     return store.getSchedulesByProject(projectPath);
@@ -107,24 +121,16 @@ export async function triggerNow(id: string): Promise<ScheduleRun | null> {
 }
 
 function registerJob(schedule: Schedule): void {
-  if (!cron.validate(schedule.cron)) {
-    console.error(`Invalid cron expression for schedule ${schedule.id}: ${schedule.cron}`);
-    return;
-  }
-
-  const job = cron.schedule(schedule.cron, () => {
+  const ok = jobs.register(schedule.id, schedule.cron, () => {
     executeSchedule(schedule);
   });
-
-  activeJobs.set(schedule.id, job);
+  if (!ok) {
+    console.error(`Invalid cron expression for schedule ${schedule.id}: ${schedule.cron}`);
+  }
 }
 
 function unregisterJob(id: string): void {
-  const job = activeJobs.get(id);
-  if (job) {
-    job.stop();
-    activeJobs.delete(id);
-  }
+  jobs.unregister(id);
 }
 
 async function executeSchedule(schedule: Schedule): Promise<ScheduleRun> {
@@ -183,8 +189,16 @@ async function runTask(schedule: Schedule, run: ScheduleRun): Promise<ScheduleRu
   }
 
   run.completedAt = Date.now();
-  store.saveScheduleRun(run);
   runningTasks.delete(schedule.id);
+
+  // The schedule was deleted while this run was going (e.g. its project was
+  // removed): keep no orphan record and start nothing queued.
+  if (!store.getSchedule(schedule.id)) {
+    runQueues.delete(schedule.id);
+    return run;
+  }
+
+  store.saveScheduleRun(run);
 
   // Process queue
   const queue = runQueues.get(schedule.id) || [];
@@ -212,7 +226,5 @@ export function initializeScheduler(): void {
 }
 
 export function shutdownScheduler(): void {
-  for (const [id] of activeJobs) {
-    unregisterJob(id);
-  }
+  jobs.clear();
 }
