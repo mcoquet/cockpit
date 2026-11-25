@@ -358,3 +358,65 @@ test('concurrent requests for one project share a single read', async () => {
   const [a, b] = await Promise.all([reader.get(s.projectDir), reader.get(s.projectDir)]);
   assert.equal(a, b);
 });
+
+// --- review follow-ups ------------------------------------------------------------------------
+
+test('other keys in the ~/.claude.json project entry are not MCP servers', async () => {
+  const s = setup();
+  fs.writeFileSync(
+    path.join(s.paths.home, '.claude.json'),
+    JSON.stringify({ projects: { [s.projectDir]: { allowedTools: [], lastModelUsage: { opus: { inputTokens: 1 } }, hasTrustDialogAccepted: true } } })
+  );
+  assert.deepEqual((await read(s)).mcpServers, []);
+});
+
+test('a project .mcp.json without an mcpServers key has no servers', async () => {
+  const s = setup({ project: { '.mcp.json': { github: { command: 'gh' } } } });
+  assert.deepEqual((await read(s)).mcpServers, []);
+});
+
+test('plugin manifest paths outside the plugin folder are ignored; single files are read', async () => {
+  const root = '.claude/plugins/cache/mkt/odd/1.0.0';
+  const s = setup({
+    home: {
+      [`${root}/.claude-plugin/plugin.json`]: { name: 'odd', commands: ['..', '/', './extra/hello.md'], agents: '../../../..' },
+      [`${root}/extra/hello.md`]: '---\ndescription: Says hello\n---\n',
+      '.claude/plugins/cache/mkt/odd/stray.md': 'Outside the plugin',
+      'Documents/private.md': 'Never read',
+      '.claude/settings.json': { enabledPlugins: { 'odd@mkt': true } },
+    },
+  });
+  fs.writeFileSync(
+    path.join(s.paths.home, '.claude/plugins/installed_plugins.json'),
+    JSON.stringify({ version: 2, plugins: { 'odd@mkt': [{ scope: 'user', installPath: path.join(s.paths.home, root) }] } })
+  );
+  const caps = await read(s);
+  assert.deepEqual(caps.commands.map((c) => [`${c.plugin}:${c.name}`, c.description]), [['odd:hello', 'Says hello']]);
+  assert.deepEqual(caps.agents, []);
+});
+
+test('a v2 install made for another project is not used', async () => {
+  const h = pluginHome();
+  const s = setup({ home: { ...h.files, '.claude/settings.json': { enabledPlugins: { 'tools@mkt': true } } } });
+  fs.writeFileSync(
+    path.join(s.paths.home, '.claude/plugins/installed_plugins.json'),
+    JSON.stringify({ version: 2, plugins: { 'tools@mkt': [{ scope: 'project', projectPath: '/other/project', installPath: path.join(s.paths.home, h.tools) }] } })
+  );
+  const caps = await read(s);
+  assert.deepEqual(caps.plugins.map((p) => [p.id, p.installed]), [['tools@mkt', false]]);
+  assert.deepEqual(caps.skills, []);
+});
+
+test('the cached reader also re-reads once a result is older than maxAgeMs', async () => {
+  const s = setup({ project: { '.claude/skills/one/SKILL.md': skill('one', 'First') } });
+  let now = 1000;
+  const reader = createCapabilitiesReader(s.paths, { maxAgeMs: 30000, now: () => now });
+  const first = await reader.get(s.projectDir);
+  // Edit inside an existing skill folder: no watched mtime changes.
+  fs.writeFileSync(path.join(s.projectDir, '.claude/skills/one/SKILL.md'), skill('one', 'Edited'));
+  now += 10000;
+  assert.equal(await reader.get(s.projectDir), first, 'still fresh');
+  now += 30000;
+  const later = await reader.get(s.projectDir);
+  assert.equal(later.skills[0].description, 'Edited');
+});

@@ -48,6 +48,10 @@ const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined);
 const MAX_DEPTH = 4;
+/** Most Markdown files read from one skills, agents or commands folder. */
+const MAX_FILES = 300;
+/** Files bigger than this are skipped; frontmatter is at the top of small files. */
+const MAX_BYTES = 256 * 1024;
 
 class Reader {
   problems: string[] = [];
@@ -60,6 +64,11 @@ class Reader {
 
   async text(file: string): Promise<string | undefined> {
     try {
+      const st = await fs.stat(file);
+      if (st.size > MAX_BYTES) {
+        this.problems.push(`${this.show(file)}: larger than ${MAX_BYTES / 1024} KB, skipped`);
+        return undefined;
+      }
       return await fs.readFile(file, 'utf8');
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
@@ -99,16 +108,27 @@ class Reader {
     }
   }
 
-  /** Every `*.md` file under dir, as paths relative to it. */
-  async markdownFiles(dir: string, rel = '', depth = 0): Promise<string[]> {
-    if (depth > MAX_DEPTH) return [];
-    const out: string[] = [];
-    for (const e of await this.entries(path.join(dir, rel))) {
-      if (e.name.startsWith('.')) continue;
-      const child = rel ? path.join(rel, e.name) : e.name;
-      if (e.isDir) out.push(...(await this.markdownFiles(dir, child, depth + 1)));
-      else if (e.isFile && e.name.endsWith('.md')) out.push(child);
+  /**
+   * Every `*.md` file under dir, as paths relative to it (at most MAX_FILES, skipping
+   * dot folders and node_modules). A dir that is itself a `.md` file gives ''.
+   */
+  async markdownFiles(dir: string): Promise<string[]> {
+    if (dir.endsWith('.md')) {
+      const st = await fs.stat(dir).catch(() => undefined);
+      return st?.isFile() ? [''] : [];
     }
+    const out: string[] = [];
+    const walk = async (rel: string, depth: number) => {
+      if (depth > MAX_DEPTH) return;
+      for (const e of await this.entries(path.join(dir, rel))) {
+        if (out.length >= MAX_FILES) return;
+        if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+        const child = rel ? path.join(rel, e.name) : e.name;
+        if (e.isDir) await walk(child, depth + 1);
+        else if (e.isFile && e.name.endsWith('.md')) out.push(child);
+      }
+    };
+    await walk('', 0);
     return out.sort();
   }
 }
@@ -157,11 +177,15 @@ function transportOf(config: Json): McpServerInfo['transport'] {
   return 'stdio';
 }
 
-/** Servers in a `{ mcpServers: {...} }` file, or a bare name → config map. */
+/** The `mcpServers` map of a config object (`.mcp.json`, a `~/.claude.json` entry). */
 function serverMap(value: unknown): Json {
+  return isObj(value) && isObj(value.mcpServers) ? value.mcpServers : {};
+}
+
+/** Plugins may also give a bare name → config map. */
+function pluginServerMap(value: unknown): Json {
   if (!isObj(value)) return {};
-  if ('mcpServers' in value) return isObj(value.mcpServers) ? value.mcpServers : {};
-  return value;
+  return 'mcpServers' in value ? serverMap(value) : value;
 }
 
 async function readSkills(r: Reader, dir: string, source: CapabilitySource, plugin?: string): Promise<CapabilityItem[]> {
@@ -197,7 +221,7 @@ async function readCommands(r: Reader, dir: string, source: CapabilitySource, pl
     if (text === undefined) continue;
     const { fields, body } = splitFrontmatter(text);
     const firstLine = body.split(/\r?\n/).map((l) => l.replace(/^#+\s*/, '').trim()).find(Boolean);
-    const name = rel.replace(/\.md$/, '').split(path.sep).join(':');
+    const name = (rel || path.basename(dir)).replace(/\.md$/, '').split(path.sep).join(':');
     out.push(item(name, str(fields.description) ?? firstLine, source, plugin));
   }
   return out;
@@ -218,10 +242,17 @@ function addUnique(target: Map<string, CapabilityItem>, items: CapabilityItem[])
   }
 }
 
-/** Paths given in a plugin manifest field: a string or an array of strings. */
+/** A manifest path resolved inside the plugin folder, or undefined if it leaves it. */
+function insidePlugin(root: string, p: string): string | undefined {
+  const resolved = path.resolve(root, p);
+  const rel = path.relative(root, resolved);
+  return rel === '' || rel.startsWith('..') || path.isAbsolute(rel) ? undefined : resolved;
+}
+
+/** Paths given in a plugin manifest field (a string or strings), kept inside the plugin. */
 function manifestPaths(root: string, value: unknown): string[] {
   const list = typeof value === 'string' ? [value] : strings(value);
-  return list.map((p) => path.resolve(root, p));
+  return list.map((p) => insidePlugin(root, p)).filter((p): p is string => p !== undefined);
 }
 
 interface PluginContents {
@@ -254,11 +285,12 @@ async function readPlugin(r: Reader, root: string, fallbackName: string): Promis
     commands.push(...(await readCommands(r, dir, 'plugin', name)));
   }
 
-  const servers: Json = { ...serverMap(await r.json(path.join(root, '.mcp.json'))) };
+  const servers: Json = { ...pluginServerMap(await r.json(path.join(root, '.mcp.json'))) };
   const declared = Array.isArray(manifest.mcpServers) ? manifest.mcpServers : [manifest.mcpServers];
   for (const entry of declared) {
-    if (typeof entry === 'string' && entry.endsWith('.json')) Object.assign(servers, serverMap(await r.json(path.resolve(root, entry))));
-    else if (isObj(entry)) Object.assign(servers, serverMap(entry));
+    const file = typeof entry === 'string' && entry.endsWith('.json') ? insidePlugin(root, entry) : undefined;
+    if (file) Object.assign(servers, pluginServerMap(await r.json(file)));
+    else if (isObj(entry)) Object.assign(servers, pluginServerMap(entry));
   }
   const mcp: McpServerInfo[] = Object.entries(servers)
     .filter(([, cfg]) => isObj(cfg))
@@ -299,7 +331,8 @@ export async function readProjectCapabilities(projectDir: string, paths: Capabil
     ]);
 
   const projects = isObj(claudeJson?.projects) ? claudeJson.projects : {};
-  const ownEntry = projects[dir] ?? projects[dir + '/'];
+  const realDir = await fs.realpath(dir).catch(() => dir);
+  const ownEntry = projects[dir] ?? projects[dir + '/'] ?? projects[realDir];
   const entry: Json = isObj(ownEntry) ? ownEntry : {};
 
   // Settings levels, lowest precedence first.
@@ -353,7 +386,9 @@ export async function readProjectCapabilities(projectDir: string, paths: Capabil
       for (const s of p.mcp) if (!servers.has(`${s.plugin}:${s.name}`)) servers.set(`${s.plugin}:${s.name}`, s);
     }
   }
-  const mcpServers = [...servers.values()].map((s) => (turnedOff.has(s.name) ? { ...s, state: 'disabled' as const } : s));
+  // Plugin servers are matched by their qualified name (unconfirmed format: plugin:<plugin>:<server>).
+  const offKey = (s: McpServerInfo) => (s.plugin ? `plugin:${s.plugin}:${s.name}` : s.name);
+  const mcpServers = [...servers.values()].map((s) => (turnedOff.has(offKey(s)) ? { ...s, state: 'disabled' as const } : s));
 
   // Skills: personal beats project. Agents: project beats personal. Plugins are namespaced.
   const skills = new Map<string, CapabilityItem>();
@@ -410,21 +445,25 @@ async function signature(projectDir: string, paths: CapabilityPaths): Promise<st
 }
 
 /**
- * A per-project cache in front of readProjectCapabilities. A result is reused until the
- * modification time of one of the config files (or the skills, agents and commands
- * folders) changes; editing a file inside those folders without adding or removing one
- * is not noticed until another watched file changes or Cockpit restarts.
+ * A per-project cache in front of readProjectCapabilities. A result is reused while the
+ * modification times of the config files and the top-level skills, agents and commands
+ * folders are unchanged, for at most maxAgeMs (30 s). Changes the mtimes don't show (an
+ * edited SKILL.md, a file in a subfolder, a plugin update) appear within that time.
  */
-export function createCapabilitiesReader(paths: CapabilityPaths) {
-  const cache = new Map<string, { sig: string; result: ProjectCapabilities }>();
+export function createCapabilitiesReader(
+  paths: CapabilityPaths,
+  { maxAgeMs = 30_000, now = Date.now }: { maxAgeMs?: number; now?: () => number } = {}
+) {
+  const cache = new Map<string, { sig: string; at: number; result: ProjectCapabilities }>();
   const inFlight = new Map<string, Promise<ProjectCapabilities>>();
 
   async function load(projectDir: string): Promise<ProjectCapabilities> {
     const sig = await signature(projectDir, paths);
     const hit = cache.get(projectDir);
-    if (hit && hit.sig === sig) return hit.result;
+    if (hit && hit.sig === sig && now() - hit.at < maxAgeMs) return hit.result;
+    const at = now();
     const result = await readProjectCapabilities(projectDir, paths);
-    cache.set(projectDir, { sig, result });
+    cache.set(projectDir, { sig, at, result });
     return result;
   }
 

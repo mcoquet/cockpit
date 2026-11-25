@@ -49,7 +49,8 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `project-capabilities.ts`: a project's capabilities (#14, #12). Reads Claude Code's
   configuration (MCP servers and their state, skills, agents, commands, enabled plugins)
   without changing it, behind the read-only `get-project-capabilities` handler, with a
-  per-project cache keyed on the modification times of the files it reads. Malformed files
+  per-project cache keyed on the modification times of the files it reads and at most 30 s old.
+  Plugin manifest paths that leave the plugin folder are ignored; walks and file sizes are capped. Malformed files
   become `problems`, never exceptions. Kept free of Electron so it can be unit-tested.
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.

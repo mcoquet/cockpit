@@ -17,10 +17,10 @@ export default function ProjectCapabilities({ state }: Props) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
   if (state === undefined || state === 'loading') {
-    return <div className="capabilities caps-note">Reading Claude Code config…</div>;
+    return <div className="capabilities caps-note" onClick={(e) => e.stopPropagation()}>Reading Claude Code config…</div>;
   }
   if (state === 'error') {
-    return <div className="capabilities caps-note">Couldn't read Claude Code config</div>;
+    return <div className="capabilities caps-note" onClick={(e) => e.stopPropagation()}>Couldn't read Claude Code config</div>;
   }
 
   const { groups, problems } = summarizeCapabilities(state);
