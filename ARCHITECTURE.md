@@ -67,6 +67,8 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 - `index.html` → `App.tsx`: the popup. Project list with search and keyboard navigation,
   conversation history per project, add and create project, and `ProjectEditor.tsx`
   (details, permission mode, project environment variables, schedules and their runs).
+  Multi-line fields use `UndoableTextarea.tsx` rather than a controlled `<textarea>`, so
+  Cmd+Z undoes a typed run instead of one character (#33; see the invariant below).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
   permission mode badge, the custom key handler (Shift+Enter, via `terminal-keys.ts`), and
   file drops: dropping files or folders types their quoted paths (via `dropped-paths.ts`),
@@ -90,6 +92,10 @@ Enter).
 
 - `test/`: `node --test` unit tests for the Electron-free modules, run against the compiled
   output in `dist/main/` (`npm test` builds first).
+  `test/electron/undo/` is a separate Electron check (Linux, `xvfb-run`; not part of `npm
+  test`): it loads the built popup and settings pages with a stubbed `window.cockpit`, types
+  into every text field and counts the undos needed to get back (`test/electron/undo/run.sh`
+  after `npm run build:renderer`).
 - `.githooks/pre-push`: when a `v*` tag is pushed, makes `package.json` match the tag;
   see Releases in `CLAUDE.md`.
 - `.github/workflows/release.yml`: on a `v*` tag, runs `npm test` (a failure stops the
@@ -125,6 +131,11 @@ Enter).
 - **A folder path never reaches a shell unquoted.** Cmd+T hands the path to Warp, Kitty
   and custom apps as an `open -a` argument, and to Terminal and iTerm only through
   `external-terminal-script.ts`.
+- **Text fields keep the browser's undo.** Cmd+Z and Cmd+Shift+Z come from the Edit menu's
+  `undo`/`redo` roles, which act on Chromium's own undo stack; nothing in the renderers keeps
+  its own. A controlled React `<textarea>` breaks that stack's grouping (React rewrites its
+  text child on every change), so textareas go through `UndoableTextarea`. `<input>` fields
+  are not affected and stay ordinary controlled inputs.
 - **Only the main process writes Cockpit's data.** Cockpit never writes Claude Code's data
   except to delete a conversation file the user asked to delete.
 

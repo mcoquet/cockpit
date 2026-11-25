@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import type { Project, ActiveSession, SessionInfo } from '../shared/types';
 import ProjectEditor from './ProjectEditor';
+import UndoableTextarea from './UndoableTextarea';
 import { splitPathForDisplay } from '../shared/path-display';
 
 // Apply dev mode class if running in development
@@ -381,7 +382,7 @@ export default function App() {
       {mode === 'search' ? (
         <>
           <div className="search-container">
-            <textarea
+            <UndoableTextarea
               ref={searchRef}
               placeholder="Search projects..."
               value={search}
