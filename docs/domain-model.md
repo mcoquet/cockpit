@@ -16,6 +16,7 @@ classDiagram
   TerminalSession "0..*" --> "1" PermissionMode : starts in
   Project "0..*" --> "0..1" PermissionMode : defaults to
   Project "1" --> "0..*" ProjectEnvironmentVariables : sets
+  Project "1" --> "1" Capabilities : derives
   Project "1" --> "0..*" Schedule : has
   Schedule "1" *-- "0..*" ScheduleRun : records
   ScheduleRun "0..1" --> "0..1" TerminalSession : opens
@@ -34,6 +35,9 @@ Diagram names are the glossary terms without spaces.
 - A **Terminal session** starts in exactly one **Permission mode**; a **Project** defaults to
   at most one (no default means Claude Code's own default).
 - A **Project** sets zero or more **Project environment variables**.
+- A **Project** has one set of **Capabilities**, derived on demand from Claude Code's
+  configuration files (the project's own and the user's). Cockpit never stores or edits
+  them.
 - A **Project** has zero or more **Schedules**.
 - A **Schedule** records zero or more **Schedule runs**, which don't exist without it.
 - An interactive **Schedule run** opens one **Terminal session**; a headless one opens none.

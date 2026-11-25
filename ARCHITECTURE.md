@@ -42,6 +42,11 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
 - `project-path.ts`: turns a stored project path (home-relative, `~/…` or absolute) into
   an absolute folder, and refuses home, its ancestors and the root as folders to delete.
   Kept free of Electron so it can be unit-tested.
+- `project-capabilities.ts`: a project's capabilities (#14, #12). Reads Claude Code's
+  configuration (MCP servers and their state, skills, agents, commands, enabled plugins)
+  without changing it, behind the read-only `get-project-capabilities` handler, with a
+  per-project cache keyed on the modification times of the files it reads. Malformed files
+  become `problems`, never exceptions. Kept free of Electron so it can be unit-tested.
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.
 - `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.

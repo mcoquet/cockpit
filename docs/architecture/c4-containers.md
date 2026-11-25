@@ -38,7 +38,7 @@ C4Container
   Rel(main, projectsStore, "Reads and writes", "JSON file")
   Rel(main, settingsStore, "Reads and writes", "JSON file")
   Rel(main, summaries, "Reads and writes", "Files")
-  Rel(main, claudeCode, "Runs terminal sessions and headless runs in", "node-pty, child_process")
+  Rel(main, claudeCode, "Runs terminal sessions and headless runs in, reads configuration of", "node-pty, child_process, files")
   Rel(main, shell, "Captures environment from", "$SHELL -ilc")
   Rel(main, statusPage, "Fetches status from", "HTTPS/JSON")
   Rel(main, macos, "Notifies and requests access via", "Electron, osascript")

@@ -18,6 +18,13 @@ The small window opened from the menubar icon (λ) that lists projects, their co
 history, and the actions to add or create a project.
 _Avoid_: dropdown, launcher, tray menu
 
+**Capabilities**:
+What Claude Code would make available when launched in a project: its MCP servers (with
+whether each is on), skills, subagents and slash commands, and the plugins that supply
+some of them. Cockpit reads them from Claude Code's configuration files and never changes
+them.
+_Avoid_: tools, integrations, extensions, config (for the concept)
+
 **Create location**:
 The folder in which "Create new project" makes a new project folder.
 _Avoid_: projects folder, default location
