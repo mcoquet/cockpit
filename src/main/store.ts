@@ -1,10 +1,9 @@
 import path from 'path';
-import os from 'os';
 import fs from 'fs';
 import type { Project, Schedule, ScheduleRun } from '../shared/types';
 import { partitionProjectSchedules } from './project-removal';
 import { failInterruptedRuns } from './interrupted-runs';
-import { expandProjectPath } from './project-path';
+import { expandProjectPath, toStoredProjectPath } from './project-path';
 
 // Use require for electron-store due to ESM/CJS compatibility
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -63,11 +62,7 @@ export function getProjects(): Project[] {
 export function addProject(projectPath: string): Project {
   const projects = getProjects();
 
-  // Convert absolute path to relative from home
-  const homePath = os.homedir();
-  const relativePath = projectPath.startsWith(homePath)
-    ? projectPath.slice(homePath.length + 1)
-    : projectPath;
+  const relativePath = toStoredProjectPath(projectPath);
 
   // Check if already exists
   if (projects.some((p) => p.path === relativePath)) {
