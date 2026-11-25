@@ -2,7 +2,7 @@
 
 ## Development setup
 
-Requires macOS and Node.js 20 (what CI uses).
+Requires macOS and Node.js 22 (what CI uses).
 
 ```bash
 git clone https://github.com/mcoquet/cockpit.git

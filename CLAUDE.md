@@ -41,11 +41,12 @@ The pre-push hook (`.githooks/pre-push`) automatically syncs `package.json` vers
 
 GitHub Actions workflow (`.github/workflows/release.yml`) builds on tag push:
 - Triggers on `v*` tags
+- Runs `npm test` (Node 22) after `npm ci`; a failing test stops the release before any DMG is built
 - Builds DMG for arm64 and x64
 - Uploads to GitHub Releases (unsigned - users right-click → Open)
 - **Automatically updates Homebrew cask** in `mcoquet/homebrew-cockpit` repo:
   - Computes SHA256 checksums for both DMGs
-  - Updates `Casks/cockpit.rb` with new version and hashes
+  - Updates `Casks/cockpit.rb` with new version and hashes; its `postflight_steps` runs `xattr -d -r com.apple.quarantine` on the installed app ([ADR 0004](docs/adr/0004-unsigned-homebrew-distribution.md)), with `must_succeed: false` so a missing attribute doesn't abort the install
   - Requires `HOMEBREW_TAP_TOKEN` secret with repo access
   - Skips prereleases (tags containing `-`, e.g., `v1.0.0-beta`)
 
