@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import type { Project, ActiveSession, SessionInfo } from '../shared/types';
 import ProjectEditor from './ProjectEditor';
 import UndoableTextarea from './UndoableTextarea';
+import { splitPathForDisplay } from '../shared/path-display';
 
 // Apply dev mode class if running in development
 if (new URLSearchParams(window.location.search).has('dev')) {
@@ -358,6 +359,8 @@ export default function App() {
     }
   }
 
+  const locationParts = splitPathForDisplay(newProjectLocation);
+
   return (
     <div className={`app ${mode === 'create' ? 'create-mode' : ''}`}>
       <div className="mode-tabs">
@@ -518,13 +521,16 @@ export default function App() {
           <div className="create-field">
             <label>Location</label>
             <div className="location-picker">
-              <span className="location-path">{newProjectLocation}</span>
+              <span className="location-path" title={newProjectLocation}>
+                <span className="location-head">{locationParts.head}</span>
+                <span className="location-tail">{locationParts.tail}</span>
+              </span>
               <button onClick={handleSelectLocation}>Change</button>
             </div>
           </div>
           <div className="create-preview">
             {newProjectName && (
-              <span>{newProjectLocation}/{newProjectName}</span>
+              <span title={`${newProjectLocation}/${newProjectName}`}>{newProjectLocation}/{newProjectName}</span>
             )}
           </div>
           <div className="create-actions">

@@ -33,8 +33,17 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   natural-language request into a schedule with Claude Code.
 - `claude-stats.ts`: usage stats from `~/.claude/stats-cache.json`.
 - `permissions.ts`: macOS privacy access prompts through `osascript`.
+- `project-path.ts`: turns a stored project path (home-relative, `~/…` or absolute) into
+  an absolute folder, and refuses home, its ancestors and the root as folders to delete.
+  Kept free of Electron so it can be unit-tested.
 - `window-count.ts`: pure dock-visibility helpers, kept free of Electron so they can be
   unit-tested.
+- `external-terminal-script.ts`: builds the AppleScript Cmd+T sends to Terminal and iTerm.
+  The folder path is single-quoted for the shell, then escaped as an AppleScript string,
+  so nothing in a folder name runs as a command. Electron-free and unit-tested.
+- `permission-mode.ts`: pure helpers for the permission mode a terminal session or
+  headless schedule run starts in (explicit choice, else the project's default, else
+  Claude Code's default) and the matching CLI flags for headless runs.
 
 ### `src/preload.ts`
 
@@ -53,14 +62,18 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
   Multi-line fields use `UndoableTextarea.tsx` rather than a controlled `<textarea>`, so
   Cmd+Z undoes a typed run instead of one character (#33; see the invariant below).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
-  permission mode badge.
+  permission mode badge, and the custom key handler (Shift+Enter, via `terminal-keys.ts`).
 - `settings.html` → `Settings.tsx` (with `EnvVarsEditor.tsx`).
 - `status.html` → `Status.tsx`.
 
 ### `src/shared/`
 
 `types.ts` (data types and the two bridge APIs) and `env-vars.ts` (pure environment
-variable helpers used by both sides).
+variable helpers used by both sides). Pure renderer helpers live here too, so the `node
+--test` suite can reach them through `dist/main/shared/`: `terminal-keys.ts` (Shift+Enter
+sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline)
+and `path-display.ts` (splits a location so the popup's Create tab truncates it in the
+middle and keeps the last folder visible).
 
 ### Elsewhere
 
@@ -72,7 +85,8 @@ variable helpers used by both sides).
   after `npm run build:renderer`).
 - `.githooks/pre-push`: when a `v*` tag is pushed, makes `package.json` match the tag;
   see Releases in `CLAUDE.md`.
-- `.github/workflows/release.yml`: on a `v*` tag, builds unsigned arm64 and x64 DMGs,
+- `.github/workflows/release.yml`: on a `v*` tag, runs `npm test` (a failure stops the
+  release), builds unsigned arm64 and x64 DMGs,
   publishes a GitHub release and rewrites the Homebrew cask
   ([ADR 0004](docs/adr/0004-unsigned-homebrew-distribution.md)).
 - `docs/plans/`, `docs/superpowers/`: past design docs and plans. History, not a
@@ -87,14 +101,23 @@ variable helpers used by both sides).
   `pty-resize` look up the sender window in `windowToSession`.
 - **A terminal window and its PTY end together.** Closing the window kills the PTY; the PTY
   exiting closes the window ([ADR 0001](docs/adr/0001-embedded-terminal-spawns-claude-directly.md)).
+- **Every terminal session's permission mode comes from `resolvePermissionMode`.**
+  `openSessionForProject` resolves it when no mode is passed, so callers pass a mode only
+  for an explicit Option+click choice; `openSessionForProjectWithId` and headless schedule
+  runs (`scheduler-executor.ts`) use it too.
 - **Every `claude` process gets its environment from `getClaudeSpawnEnv`.** Terminal
   sessions, headless schedule runs, summaries and schedule interpretation all go through
   it, so they all see the user's shell environment plus Cockpit's environment variables.
 - **Project paths are stored relative to home**
   ([ADR 0002](docs/adr/0002-project-identity-is-home-relative-path.md)), or absolute for
-  folders outside it, and expanded at the point of use. The expansion is currently written out in several places (`pty.ts`,
-  `store.ts`, `sessions.ts`, `scheduler-executor.ts`, `terminal-window.ts`, `index.ts`) with slightly
-  different rules.
+  folders outside it, and expanded at the point of use. `project-path.ts`
+  (`expandProjectPath`) is the shared expansion; so far only the remove-project handler in
+  `index.ts` uses it. The expansion is still written out separately, with slightly different
+  rules, in `pty.ts`, `store.ts`, `sessions.ts`, `scheduler-executor.ts`,
+  `terminal-window.ts` and elsewhere in `index.ts` (moving those over is #59).
+- **A folder path never reaches a shell unquoted.** Cmd+T hands the path to Warp, Kitty
+  and custom apps as an `open -a` argument, and to Terminal and iTerm only through
+  `external-terminal-script.ts`.
 - **Text fields keep the browser's undo.** Cmd+Z and Cmd+Shift+Z come from the Edit menu's
   `undo`/`redo` roles, which act on Chromium's own undo stack; nothing in the renderers keeps
   its own. A controlled React `<textarea>` breaks that stack's grouping (React rewrites its

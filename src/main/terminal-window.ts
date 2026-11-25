@@ -4,6 +4,7 @@ import os from 'os';
 import { execFile } from 'child_process';
 import * as settings from './settings';
 import { countLiveWindows } from './window-count';
+import { terminalAppScript, iTermScript } from './external-terminal-script';
 import type { PermissionMode } from '../shared/types';
 
 const terminalWindows = new Map<string, BrowserWindow>();
@@ -251,9 +252,6 @@ export function openExternalTerminal(sessionId: string): void {
   const appSettings = settings.getSettings();
   const terminal = appSettings.externalTerminal || 'terminal';
 
-  // Escape path for shell usage
-  const escapedPath = fullPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-
   const handleError = (appName: string) => {
     dialog.showMessageBox({
       type: 'error',
@@ -265,28 +263,13 @@ export function openExternalTerminal(sessionId: string): void {
   };
 
   if (terminal === 'terminal') {
-    // Terminal.app via AppleScript
-    const script = `
-      tell application "Terminal"
-        activate
-        do script "cd \\"${escapedPath}\\""
-      end tell
-    `;
-    execFile('osascript', ['-e', script], (err) => {
+    // Terminal.app via AppleScript; the path is quoted for the shell and AppleScript (#52)
+    execFile('osascript', ['-e', terminalAppScript(fullPath)], (err) => {
       if (err) handleError('Terminal.app');
     });
   } else if (terminal === 'iterm') {
-    // iTerm2 via AppleScript
-    const script = `
-      tell application "iTerm"
-        activate
-        set newWindow to (create window with default profile)
-        tell current session of newWindow
-          write text "cd \\"${escapedPath}\\""
-        end tell
-      end tell
-    `;
-    execFile('osascript', ['-e', script], (err) => {
+    // iTerm2 via AppleScript; the path is quoted for the shell and AppleScript (#52)
+    execFile('osascript', ['-e', iTermScript(fullPath)], (err) => {
       if (err) handleError('iTerm');
     });
   } else if (terminal === 'warp') {
