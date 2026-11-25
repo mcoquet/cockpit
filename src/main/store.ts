@@ -3,6 +3,7 @@ import os from 'os';
 import fs from 'fs';
 import type { Project, Schedule, ScheduleRun } from '../shared/types';
 import { partitionProjectSchedules } from './project-removal';
+import { failInterruptedRuns } from './interrupted-runs';
 
 // Use require for electron-store due to ESM/CJS compatibility
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -193,6 +194,20 @@ export function saveScheduleRun(run: ScheduleRun): ScheduleRun {
   const capped = runs.slice(-1000);
   store.set('scheduleRuns', capped);
   return run;
+}
+
+/**
+ * Mark stored "queued"/"running" runs that `liveRunIds` doesn't hold as failed
+ * (#55; see interrupted-runs.ts). Returns the IDs it failed.
+ */
+export function failInterruptedScheduleRuns(liveRunIds: ReadonlySet<string>): string[] {
+  const { runs, failedIds } = failInterruptedRuns(
+    store.get('scheduleRuns') as ScheduleRun[],
+    liveRunIds,
+    Date.now()
+  );
+  if (failedIds.length > 0) store.set('scheduleRuns', runs);
+  return failedIds;
 }
 
 export function deleteScheduleRun(runId: string): boolean {

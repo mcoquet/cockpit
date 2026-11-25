@@ -32,8 +32,13 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   and deleting a removed project's schedules (`deleteSchedulesForProject`).
 - `job-registry.ts`: the scheduler's active node-cron jobs keyed by schedule ID
   (register, unregister, clear). Electron-free and unit-tested with real node-cron.
-- `project-removal.ts`: which schedules and schedule runs go with a removed project, and
-  the remove dialog's checkbox label and schedule list. Electron-free and unit-tested.
+- `project-removal.ts`: which schedules and schedule runs go with a removed project, the
+  remove dialog's checkbox label and schedule list, and the remove dialogs' flow
+  (`askRemoveProject`, given `dialog.showMessageBox`; Cancel in any of them, the "Delete
+  Permanently" confirmation included, removes nothing). Electron-free and unit-tested.
+- `interrupted-runs.ts`: the scheduler's start-up sweep, which marks schedule runs a
+  previous Cockpit process left "queued" or "running" as failed ("Cockpit quit before
+  this ran"). Electron-free and unit-tested; `store.failInterruptedScheduleRuns` applies it.
 - `scheduler-executor.ts`: runs a schedule run (interactive or headless) and turns a
   natural-language request into a schedule with Claude Code.
 - `claude-stats.ts`: usage stats from `~/.claude/stats-cache.json`.
