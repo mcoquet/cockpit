@@ -83,6 +83,8 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 - `index.html` → `App.tsx`: the popup. Project list with search and keyboard navigation,
   conversation history per project, add and create project, and `ProjectEditor.tsx`
   (details, permission mode, project environment variables, schedules and their runs).
+  Every project can be expanded: under its conversation history, `ProjectCapabilities.tsx`
+  shows the project's capabilities, read on expand (never when the popup opens).
   Multi-line fields use `UndoableTextarea.tsx` rather than a controlled `<textarea>`, so
   Cmd+Z undoes a typed run instead of one character (#33; see the invariant below).
 - `terminal.html` → `Terminal.tsx`: xterm.js terminal, link handling, context menu,
@@ -98,6 +100,8 @@ Four Vite entry points, each an HTML file plus a `*-main.tsx`:
 variable helpers used by both sides). Pure renderer helpers live here too, so the `node
 --test` suite can reach them through `dist/main/shared/`: `terminal-keys.ts` (Shift+Enter
 sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a newline),
+`capabilities-display.ts` (groups a project's capabilities into the popup's MCP, Skills,
+Agents and Commands lines, folding user-level and plugin items into "+N global"),
 `path-display.ts` (splits a location so the popup's Create tab truncates it in the
 middle and keeps the last folder visible), `shell-quote.ts` (`shellSingleQuote`, also
 used by the main process for Cmd+T) and `dropped-paths.ts` (the text a file drop types

@@ -15,7 +15,7 @@ _Avoid_: repo, workspace, folder (for the concept)
 
 **Popup**:
 The small window opened from the menubar icon (λ) that lists projects, their conversation
-history, and the actions to add or create a project.
+history and capabilities, and the actions to add or create a project.
 _Avoid_: dropdown, launcher, tray menu
 
 **Capabilities**:

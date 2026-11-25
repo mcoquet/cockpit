@@ -38,7 +38,8 @@ folder's modification time changes, so reading never holds up the popup.
 
 ## How it shows
 
-Pending Miguel's choice (the roadmap's Decide tab), defaulting to B at 21:00 UTC:
+Miguel chose **B** (2026-11-25), with "+N global" as a count whose names are in a tooltip
+and listed on click, and every project expandable. The options were:
 
 - **A. Badges on the project row**, counting only what is specific to the project, with a
   tooltip listing names. Every project is read after the popup renders.
