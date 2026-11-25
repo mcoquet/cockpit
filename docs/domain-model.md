@@ -8,6 +8,7 @@ defined in [`GLOSSARY.md`](../GLOSSARY.md).
 
 ```mermaid
 classDiagram
+  %% See docs/adr/0002-project-identity-is-home-relative-path.md
   Project "1" --> "0..*" TerminalSession : runs
   Project "1" --> "0..1" ActiveTerminalSession : tracks
   ActiveTerminalSession "0..1" --> "1" TerminalSession : is
