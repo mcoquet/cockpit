@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BrowserWindow } from 'electron';
 import * as store from './store';
 import { createJobRegistry } from './job-registry';
+import { nextRunAt } from './next-run';
 import type { Schedule, ScheduleRun } from '../shared/types';
 
 // Active cron jobs keyed by schedule ID
@@ -98,12 +99,13 @@ export function resumeSchedule(id: string): void {
   updateSchedule(id, { enabled: true });
 }
 
-export function getNextRun(id: string): Date | null {
-  const schedule = store.getSchedule(id);
-  if (!schedule || !schedule.enabled) return null;
-  // node-cron doesn't expose next run time directly
-  // Return null for now - can add cron-parser later if needed
-  return null;
+/**
+ * When `cronExpression` next fires (epoch ms), or null if it is invalid or
+ * never fires. Takes the expression rather than a schedule ID so the editor can
+ * show it while the cron is being typed (#54).
+ */
+export function getNextRunTime(cronExpression: string): number | null {
+  return nextRunAt(cronExpression)?.getTime() ?? null;
 }
 
 export function getRunHistory(id: string, limit = 20): ScheduleRun[] {

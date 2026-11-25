@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Project, Schedule, ParsedSchedule, ScheduleRun, PermissionMode } from '../shared/types';
 import { envVarsToRows, rowsToEnvVars } from '../shared/env-vars';
+import { formatNextRun } from '../shared/next-run-label';
 import type { EnvVarRow } from '../shared/env-vars';
 import EnvVarsEditor from './EnvVarsEditor';
 import UndoableTextarea from './UndoableTextarea';
@@ -38,8 +39,12 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
   const [schedMode, setSchedMode] = useState<'interactive' | 'headless'>('interactive');
   const [schedPrompt, setSchedPrompt] = useState('');
   const [schedQueueBehavior, setSchedQueueBehavior] = useState<'skip' | 'queue' | 'parallel'>('skip');
-  const [schedCatchUp, setSchedCatchUp] = useState(false);
   const [schedEnabled, setSchedEnabled] = useState(true);
+
+  // Next run times (epoch ms; null = invalid cron or never fires), per saved
+  // schedule and for the cron in the form (#54)
+  const [nextRuns, setNextRuns] = useState<Record<string, number | null>>({});
+  const [formNextRun, setFormNextRun] = useState<number | null>(null);
 
   // Running state and history
   const [runningSchedules, setRunningSchedules] = useState<Set<string>>(new Set());
@@ -72,9 +77,33 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
     });
   }, []);
 
+  useEffect(() => {
+    let current = true;
+    if (!schedCron.trim()) {
+      setFormNextRun(null);
+      return;
+    }
+    window.cockpit.getNextScheduleRun(schedCron).then((next) => {
+      if (current) setFormNextRun(next);
+    });
+    return () => {
+      current = false;
+    };
+  }, [schedCron]);
+
   async function loadSchedules() {
     const list = await window.cockpit.listSchedules(project.path);
     setSchedules(list);
+    const entries = await Promise.all(
+      list.map(async (s) => [s.id, await window.cockpit.getNextScheduleRun(s.cron)] as const)
+    );
+    setNextRuns(Object.fromEntries(entries));
+  }
+
+  function scheduleNextRunText(schedule: Schedule): string {
+    if (!schedule.enabled) return 'Paused';
+    const next = nextRuns[schedule.id];
+    return next ? `Next run: ${formatNextRun(new Date(next))}` : 'No next run';
   }
 
   function resetScheduleForm() {
@@ -83,7 +112,6 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
     setSchedMode('interactive');
     setSchedPrompt('');
     setSchedQueueBehavior('skip');
-    setSchedCatchUp(false);
     setSchedEnabled(true);
     setEditingSchedule(null);
     setScheduleView('list');
@@ -107,7 +135,6 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
       setSchedMode(parsed.mode);
       setSchedPrompt(parsed.prompt);
       setSchedQueueBehavior(parsed.queueBehavior);
-      setSchedCatchUp(parsed.catchUp);
       setScheduleView('preview');
     } catch (err) {
       setInterpretError(err instanceof Error ? err.message : 'Failed to interpret');
@@ -134,7 +161,6 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
         mode: schedMode,
         prompt: schedPrompt,
         queueBehavior: schedQueueBehavior,
-        catchUp: schedCatchUp,
         enabled: schedEnabled,
       });
     } else {
@@ -145,7 +171,6 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
         mode: schedMode,
         prompt: schedPrompt,
         queueBehavior: schedQueueBehavior,
-        catchUp: schedCatchUp,
         enabled: schedEnabled,
       });
     }
@@ -161,7 +186,6 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
     setSchedMode(schedule.mode);
     setSchedPrompt(schedule.prompt);
     setSchedQueueBehavior(schedule.queueBehavior);
-    setSchedCatchUp(schedule.catchUp);
     setSchedEnabled(schedule.enabled);
     setScheduleView('edit');
   }
@@ -313,6 +337,7 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                               <span className="schedule-name">{schedule.name}</span>
                               <span className="schedule-cron">{schedule.cron}</span>
                               <span className={`schedule-mode ${schedule.mode}`}>{schedule.mode}</span>
+                              <span className="schedule-next-run">{scheduleNextRunText(schedule)}</span>
                             </div>
                           </div>
                           <div className="schedule-actions">
@@ -420,6 +445,12 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                     <span className="preview-value">{parsedSchedule.cronHuman}</span>
                   </div>
                   <div className="preview-row">
+                    <span className="preview-label">Next run</span>
+                    <span className="preview-value">
+                      {formNextRun ? formatNextRun(new Date(formNextRun)) : 'No next run: check the cron expression'}
+                    </span>
+                  </div>
+                  <div className="preview-row">
                     <span className="preview-label">Task</span>
                     <span className="preview-value">{parsedSchedule.prompt}</span>
                   </div>
@@ -449,6 +480,14 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                 <div className="editor-field">
                   <label>Cron</label>
                   <input type="text" value={schedCron} onChange={(e) => setSchedCron(e.target.value)} placeholder="0 9 * * 1-5" />
+                  {schedCron.trim() && (
+                    <div className={`next-run-hint ${formNextRun ? '' : 'invalid'}`}>
+                      {formNextRun
+                        ? `Next run: ${formatNextRun(new Date(formNextRun))}${schedEnabled ? '' : ' (once enabled)'}`
+                        : 'No next run: check the cron expression'}
+                      <span className="next-run-note">Runs missed while Cockpit is closed are skipped.</span>
+                    </div>
+                  )}
                 </div>
                 <div className="editor-field">
                   <label>Mode</label>
@@ -470,7 +509,6 @@ export default function ProjectEditor({ project, onSave, onRemove, onClose }: Pr
                   </select>
                 </div>
                 <div className="editor-field-row">
-                  <label><input type="checkbox" checked={schedCatchUp} onChange={(e) => setSchedCatchUp(e.target.checked)} /> Catch up missed</label>
                   <label><input type="checkbox" checked={schedEnabled} onChange={(e) => setSchedEnabled(e.target.checked)} /> Enabled</label>
                 </div>
                 <div className="editor-actions">

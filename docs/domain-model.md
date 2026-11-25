@@ -68,7 +68,9 @@ Diagram names are the glossary terms without spaces.
   A headless schedule run starts in its project's default permission mode.
 - A conversation's summary is written once and never regenerated; deleting a conversation
   deletes its summary.
-- A schedule fires only while it is enabled and Cockpit is running.
+- A schedule fires only while it is enabled and Cockpit is running. Occurrences that come
+  due while Cockpit is closed are skipped, never run later; the schedule's next run is
+  always its next occurrence after now.
 - Deleting a schedule deletes all its schedule runs.
 - Removing a project deletes its schedules and their schedule runs, and stops their cron
   jobs and queued runs, unless the user unticks "Also delete N schedules" in the remove
@@ -91,13 +93,6 @@ Diagram names are the glossary terms without spaces.
 - The restore set is cleared once it has been reopened.
 - Window → "Open in External Terminal" (Cmd+T) and Cmd+N act on the project of the
   terminal window last used, whichever of a project's windows that is.
-
-### Current behaviour worth knowing
-
-These follow from the code as built; they are gaps, not rules.
-
-- **Catch-up** is stored on a schedule but nothing acts on it; missed occurrences are never
-  run.
 
 ## Lifecycles
 

@@ -37,6 +37,13 @@ is in [`docs/architecture/`](docs/architecture/README.md); terms are in
   and deleting a removed project's schedules (`deleteSchedulesForProject`).
 - `job-registry.ts`: the scheduler's active node-cron jobs keyed by schedule ID
   (register, unregister, clear). Electron-free and unit-tested with real node-cron.
+- `next-run.ts`: when node-cron would next fire a cron expression (`nextRunAt`), worked out
+  from node-cron's own conversion of the expression into value sets (loaded by file, since
+  node-cron's exports don't expose it), so it agrees with node-cron's quirks (full day
+  names, `7` in ranges, `5/15`, both day fields having to match) and skips local times lost
+  to a clock change. node-cron's `getNextRun()` needs a started task and is wrong for
+  weekdays. Backs `scheduler.getNextRunTime` and the `scheduler:next-run` IPC.
+  Electron-free and unit-tested against node-cron's own matcher.
 - `project-removal.ts`: which schedules and schedule runs go with a removed project, the
   remove dialog's checkbox label and schedule list, and the remove dialogs' flow
   (`askRemoveProject`, given `dialog.showMessageBox`; Cancel in any of them, the "Delete
@@ -110,9 +117,10 @@ sends what xterm.js sends for Option+Enter, `ESC CR`, so Claude Code inserts a n
 Agents and Commands lines, folding user-level and plugin items into "+N global"),
 `path-display.ts` (splits a location so the popup's Create tab truncates it in the
 middle and keeps the last folder visible), `shell-quote.ts` (`shellSingleQuote`, also
-used by the main process for Cmd+T) and `dropped-paths.ts` (the text a file drop types
+used by the main process for Cmd+T), `dropped-paths.ts` (the text a file drop types
 into a terminal window: each path single-quoted, space-separated, one trailing space, no
-Enter).
+Enter) and `next-run-label.ts` (the schedule editor's "Today 18:30" / "Mon 09:00" /
+"Wed 2 Dec 09:05" label for a next run).
 
 ### Elsewhere
 

@@ -14,7 +14,6 @@ export interface ParsedSchedule {
   prompt: string;
   mode: 'interactive' | 'headless';
   queueBehavior: 'skip' | 'queue' | 'parallel';
-  catchUp: boolean;
   name: string;
 }
 
@@ -112,7 +111,6 @@ Output ONLY valid JSON with these fields:
   "prompt": "the task/instruction to execute",
   "mode": "interactive" or "headless" (use headless for background tasks, interactive if user needs to see output),
   "queueBehavior": "skip" (default), "queue", or "parallel",
-  "catchUp": false (default, set true if user says to run missed tasks),
   "name": "short name for this schedule"
 }
 

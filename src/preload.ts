@@ -58,6 +58,8 @@ const cockpitApi: CockpitAPI = {
     ipcRenderer.invoke('scheduler:trigger', id),
   getScheduleHistory: (id: string, limit?: number) =>
     ipcRenderer.invoke('scheduler:history', id, limit),
+  getNextScheduleRun: (cronExpression: string) =>
+    ipcRenderer.invoke('scheduler:next-run', cronExpression),
   interpretSchedule: (input: string) =>
     ipcRenderer.invoke('scheduler:interpret', input),
   onScheduleRunOutput: (callback: (data: { runId: string; chunk: string }) => void) => {
