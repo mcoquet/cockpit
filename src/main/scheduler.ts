@@ -110,10 +110,6 @@ export function getRunHistory(id: string, limit = 20): ScheduleRun[] {
   return store.getScheduleRuns(id, limit);
 }
 
-export function getQueuedRuns(id: string): ScheduleRun[] {
-  return runQueues.get(id) || [];
-}
-
 export async function triggerNow(id: string): Promise<ScheduleRun | null> {
   const schedule = store.getSchedule(id);
   if (!schedule) return null;
@@ -216,6 +212,16 @@ async function runTask(schedule: Schedule, run: ScheduleRun): Promise<ScheduleRu
 }
 
 export function initializeScheduler(): void {
+  // A previous Cockpit process's queued or running runs can never finish: their
+  // queue and task were in memory (#55). Fail them, sparing any run this process
+  // already started.
+  const live = new Set<string>([...runningTasks.values()].map((r) => r.id));
+  for (const queue of runQueues.values()) for (const r of queue) live.add(r.id);
+  const failed = store.failInterruptedScheduleRuns(live);
+  if (failed.length > 0) {
+    console.log(`[scheduler] Marked ${failed.length} interrupted schedule run(s) as failed`);
+  }
+
   // Register all enabled schedules on startup
   const schedules = store.getSchedules();
   for (const schedule of schedules) {
